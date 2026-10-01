@@ -18,7 +18,9 @@ def env_int(name: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class Config:
-    tile_size: int = 1024
+    tile_size: int | str = 1024
+    memory_budget: str = "auto"
+    quality: str = "standard"
     tile_overlap: int | None = None
     alignment: str = "affine"
     alignment_max_dim: int = 4096
@@ -42,18 +44,40 @@ class Config:
         return cls(**defaults)
 
     @property
+    def pyramid_levels(self):
+        return {"standard": 0, "high": 3, "max": 4}[self.quality]
+
+    @property
+    def grid(self):
+        return 2**self.pyramid_levels
+
+    @property
+    def focus_support(self):
+        if self.quality != "standard":
+            return max(3*self.focus_radius+1, 2*self.focus_radius+8)
+        return 2*self.focus_radius+4 if self.multiscale else self.focus_radius+1
+
+    @property
+    def analysis_bound(self):
+        return min(self.alignment_max_dim, 2048)
+
+    @property
     def required_halo(self):
-        # Sobel + focus aggregation (+ multiscale prefilter), median, mask blur.
-        focus_support = 2 * self.focus_radius + 4 if self.multiscale else self.focus_radius + 1
-        return focus_support + 1 + self.blend_radius
+        # Complete finite support: focus/cleanup/mask + analysis and synthesis
+        # pyramid filters. Grid-aligned expansion makes tile phases identical.
+        return self.focus_support + (1 if self.quality == "standard" else 2) + self.blend_radius + 4*(2**self.pyramid_levels-1)
 
     @property
     def halo(self):
         return self.required_halo if self.tile_overlap is None else self.tile_overlap
 
     def validate(self):
-        if self.tile_size < 16 or self.alignment_max_dim < 32:
+        if (self.tile_size != "auto" and (not isinstance(self.tile_size, int) or self.tile_size < 16)) or self.alignment_max_dim < 32:
             raise FocusStackError("tile size must be >=16 and alignment max dimension >=32")
+        if self.quality not in {"standard", "high", "max"}:
+            raise FocusStackError("quality must be standard, high, or max")
+        from .memory import parse_budget
+        parse_budget(self.memory_budget)
         if self.focus_radius < 1 or self.blend_radius < 0:
             raise FocusStackError("focus radius must be >=1 and blend radius >=0")
         if self.max_workers < 1 or self.max_workers > 32:

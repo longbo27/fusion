@@ -10,3 +10,15 @@
 - Measure memory after performance changes. Run tests before finishing.
 - Keep algorithms independent of UI/platform code.
 - Future macOS optimization will use native Apple technologies; do not add them to Linux V1.
+- Production validation uses --quality max; keep standard/V1 behavior for comparisons.
+- Budget codec allocations dynamically; do not reintroduce fixed TIFF segment caps.
+- Source count must not size any resident image/mask/pyramid collection.
+- Use a global dyadic pyramid grid and global remap coordinates; test affine seams.
+- Do not blur confident thin structures or clip negative Laplacian coefficients.
+- Include OS reserve, current RSS, decoded/encoded segment buffers, and codec margins.
+- Flush bounded mapped ranges in batches, not the whole cache per segment.
+- Do not generate unused analysis resolutions or rescan cached orientation-1 images.
+- Normalize ru_maxrss units by platform; missing memory advice must not crash.
+- Run 3/10/20-frame memory scaling after changes to the hot path.
+- Report exact 100MP workload, stage timings, RSS, and scratch peak; never invent passes.
+- Benchmark inputs/results stay outside Git; put measured summaries in documentation.

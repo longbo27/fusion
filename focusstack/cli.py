@@ -1,11 +1,14 @@
 """Concise CLI for the reusable stacking pipeline."""
 
 import argparse
+from dataclasses import asdict
+import json
 from pathlib import Path
 import sys
 from . import __version__
 from .config import Config, FocusStackError
 from .engine import stack
+from .io import discover
 
 
 def parser():
@@ -13,7 +16,11 @@ def parser():
     result.add_argument("inputs", nargs="+", help="TIFF files or directories (directory order is lexical)")
     result.add_argument("-o", "--output", required=True, type=Path)
     result.add_argument("--version", action="version", version=f"FocusStack {__version__}")
-    result.add_argument("--tile-size", type=int)
+    result.add_argument("--tile-size", type=lambda v: v if v == "auto" else int(v))
+    result.add_argument("--memory-budget", default="auto")
+    result.add_argument("--quality", choices=["standard", "high", "max"], default="standard")
+    result.add_argument("--benchmark-stages", action="store_true")
+    result.add_argument("--report-json", type=Path)
     result.add_argument("--tile-overlap", type=int, help="halo pixels; defaults to required finite filter support")
     result.add_argument("--alignment", choices=["affine", "translation", "none"], default="affine")
     result.add_argument("--alignment-max-dim", type=int)
@@ -34,14 +41,25 @@ def main(argv=None):
     options = vars(args).copy()
     inputs, output = options.pop("inputs"), options.pop("output")
     verbose = options.pop("verbose")
+    benchmark_stages = options.pop("benchmark_stages")
+    report = options.pop("report_json")
     try:
+        if report and (report.resolve() == output.resolve() or report.resolve() in discover(inputs)):
+            raise FocusStackError("Report path must differ from output and input paths")
         config = Config.from_environment(**options)
-        stack(inputs, output, config, log=lambda message: print(message, file=sys.stderr),
+        result = stack(inputs, output, config, log=lambda message: print(message, file=sys.stderr),
               progress=sys.stderr.isatty(), verbose=verbose)
+        if benchmark_stages:
+            print(json.dumps(result.timings, indent=2), file=sys.stderr)
+        if report:
+            report.parent.mkdir(parents=True, exist_ok=True)
+            data = asdict(result)
+            data["transforms"] = [m.tolist() for m in result.transforms]
+            report.write_text(json.dumps(data, default=str, indent=2))
     except KeyboardInterrupt:
         print("Interrupted; incomplete output removed.", file=sys.stderr)
         return 130
-    except FocusStackError as exc:
+    except (FocusStackError, OSError) as exc:
         print(f"focusstack: {exc}", file=sys.stderr)
         return 2
     return 0

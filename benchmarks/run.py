@@ -13,7 +13,7 @@ import numpy as np
 import tifffile
 from focusstack import Config, stack
 
-PROFILES = {"small": (640, 480, 3), "medium": (3072, 2048, 6), "100mp": (12000, 8300, 10)}
+PROFILES = {"small": (640, 480, 3), "medium": (3072, 2048, 6), "100mp": (12000, 8300, 20)}
 ICC = b"FocusStack benchmark ICC passthrough marker (not a display profile)"
 
 
@@ -49,28 +49,41 @@ def worker(args):
     root = args.worker
     config = Config(tile_size=args.tile_size, alignment=args.alignment,
                     alignment_max_dim=args.alignment_max_dim, temp_dir=root / "scratch",
-                    max_workers=args.max_workers)
-    result = stack([root / "input"], root / "output.tif", config, log=lambda s: print(s, file=sys.stderr))
+                    max_workers=args.max_workers, quality=args.quality, memory_budget=args.memory_budget)
+    paths = sorted((root / "input").glob("*.tif"))
+    if args.frames:
+        paths = paths[:args.frames]
+    result = stack(paths, root / "output.tif", config, log=lambda s: print(s, file=sys.stderr), progress=True)
     with tifffile.TiffFile(result.output) as tif:
         page = tif.pages[0]
         assert page.dtype == np.dtype("uint16") and page.shape == result.shape
         assert page.tags["InterColorProfile"].value == ICC
         assert page.tags["XResolution"].value == (300, 1)
     metrics = dict(width=result.shape[1], height=result.shape[0], images=result.frames,
-                   tile_size=args.tile_size, alignment=args.alignment,
+                   tile_size=result.tile_size, alignment=args.alignment, quality=args.quality,
                    runtime_seconds=round(result.elapsed_seconds, 3),
                    peak_rss_mib=round(result.peak_rss_bytes/2**20, 2),
                    scratch_mib=round(result.scratch_bytes/2**20, 2),
+                   scratch_peak_mib=round((result.scratch_bytes+result.output_bytes)/2**20, 2),
                    output_mib=round(result.output_bytes/2**20, 2),
-                   output_validated=True)
-    (root / "metrics.json").write_text(json.dumps(metrics))
+                   output_validated=True, timings={k: round(v, 3) for k,v in result.timings.items()},
+                   input_mib=round(result.input_bytes/2**20, 2), budget_mib=round(result.budget_bytes/2**20, 2),
+                   source_mp_per_second=round(result.frames*result.shape[0]*result.shape[1]/1e6/result.elapsed_seconds, 3))
+    (root / "metrics.json").write_text(json.dumps(metrics, indent=2))
+    if args.report_json:
+        args.report_json.parent.mkdir(parents=True, exist_ok=True)
+        args.report_json.write_text(json.dumps(metrics, indent=2))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=PROFILES, default="small")
     parser.add_argument("--frames", type=int)
-    parser.add_argument("--tile-size", type=int, default=1024)
+    parser.add_argument("--tile-size", type=lambda v: v if v == "auto" else int(v), default=1024)
+    parser.add_argument("--quality", choices=["standard", "high", "max"], default="standard")
+    parser.add_argument("--memory-budget", default="auto")
+    parser.add_argument("--reuse", type=Path, help="reuse an existing benchmark root containing input/")
+    parser.add_argument("--report-json", type=Path)
     parser.add_argument("--alignment", choices=["none", "translation", "affine"], default="none")
     parser.add_argument("--alignment-max-dim", type=int, default=4096)
     parser.add_argument("--max-workers", type=int, default=2)
@@ -79,15 +92,17 @@ def main():
     parser.add_argument("--keep", action="store_true")
     parser.add_argument("--worker", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
-    if args.worker:
+    if args.worker or args.reuse:
+        args.worker = args.worker or args.reuse
         worker(args)
+        print((args.worker / "metrics.json").read_text())
         return
     width, height, frames = PROFILES[args.profile]
     frames = frames if args.frames is None else args.frames
     if frames < 1 or frames > 65535:
         parser.error("frames must be between 1 and 65535")
     Config(tile_size=args.tile_size, alignment=args.alignment, alignment_max_dim=args.alignment_max_dim,
-           max_workers=args.max_workers).validate()
+           max_workers=args.max_workers, quality=args.quality, memory_budget=args.memory_budget).validate()
     parent = args.work_dir or Path(tempfile.gettempdir())
     parent.mkdir(parents=True, exist_ok=True)
     reserve = width*height*6*(frames*2+3)
@@ -100,20 +115,29 @@ def main():
         cv2.setNumThreads(args.max_workers)
         for index in range(frames):
             print(f"Generate {index+1}/{frames}: {width}×{height}", file=sys.stderr)
-            tifffile.imwrite(root / "input" / f"frame-{index:03d}.tif",
-                             data=frame_tiles(width, height, index, frames), shape=(height, width, 3),
-                             dtype=np.uint16, photometric="rgb", metadata=None, tile=(256, 256),
-                             compression=None if args.compression == "none" else args.compression,
-                             bigtiff=width*height*6 >= 2**32-2**25, maxworkers=1, buffersize=1024**2,
-                             iccprofile=ICC, resolution=(300, 300), resolutionunit="INCH")
+            path = root / "input" / f"frame-{index:03d}.tif"
+            if args.compression == "none":
+                from .dataset import strips
+                tifffile.imwrite(path, data=strips(width, height, index, frames),
+                    shape=(height, width, 3), dtype=np.uint16, photometric="rgb", metadata=None,
+                    rowsperstrip=64, bigtiff=width*height*6 >= 2**32-2**25,
+                    iccprofile=ICC, resolution=(300, 300), resolutionunit="INCH")
+            else:
+                tifffile.imwrite(path, data=frame_tiles(width, height, index, frames), shape=(height, width, 3),
+                    dtype=np.uint16, photometric="rgb", metadata=None, tile=(256, 256), compression=args.compression,
+                    bigtiff=width*height*6 >= 2**32-2**25, maxworkers=1, buffersize=1024**2,
+                    iccprofile=ICC, resolution=(300, 300), resolutionunit="INCH")
         generation = time.perf_counter()-start
         subprocess.run([sys.executable, "-m", "benchmarks.run", "--worker", str(root),
-                        "--tile-size", str(args.tile_size), "--alignment", args.alignment,
+                        "--tile-size", str(args.tile_size), "--quality", args.quality, "--memory-budget", args.memory_budget, "--alignment", args.alignment,
                         "--alignment-max-dim", str(args.alignment_max_dim), "--max-workers", str(args.max_workers)], check=True)
         metrics = json.loads((root / "metrics.json").read_text())
         metrics.update(profile=args.profile, source_compression=args.compression,
                        generation_seconds=round(generation, 3))
         print(json.dumps(metrics, indent=2))
+        if args.report_json:
+            args.report_json.parent.mkdir(parents=True, exist_ok=True)
+            args.report_json.write_text(json.dumps(metrics, indent=2))
         if args.keep:
             print(f"Artifacts retained: {root}", file=sys.stderr)
     finally:

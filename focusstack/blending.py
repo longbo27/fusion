@@ -17,7 +17,22 @@ def source_weight(labels, index, confidence, radius, valid):
 def normalize(accumulator, total, fallback):
     covered = total > 1e-8
     np.divide(accumulator, np.maximum(total[..., None], 1e-8), out=accumulator)
-    accumulator[~covered] = fallback[~covered]
+    if fallback is not None:
+        accumulator[~covered] = fallback[~covered]
     np.clip(accumulator, 0, 65535, out=accumulator)
     np.rint(accumulator, out=accumulator)
     return accumulator.astype(np.uint16)
+
+
+def occlusion_weight(labels, index, confidence, edge, radius, valid):
+    """Hard detail ownership; uncertainty blends only near label transitions."""
+    mask = (labels == index).astype(np.float32)
+    local = smooth(mask, radius)
+    # Only mask boundaries need transitions. Strong edge detail remains hard,
+    # even when neighboring focus candidates have similarly high scores.
+    protection = np.maximum(np.clip(confidence*5, 0, 1), edge)
+    transition = np.clip(4*local*(1-local), 0, 1)
+    softness = (1-protection)*transition
+    weight = mask*(1-softness)+local*softness
+    weight *= valid
+    return weight, protection, mask*valid

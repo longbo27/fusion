@@ -185,15 +185,15 @@ def test_resource_and_decode_limits(scene, write_frames, tmp_path, monkeypatch):
     monkeypatch.setattr(memory.shutil, "disk_usage", lambda _: type("Disk", (), {"free": 1})())
     with pytest.raises(FocusStackError, match="Insufficient disk"):
         stack(files, tmp_path / "result.tif", config(tmp_path))
-    monkeypatch.setattr(io, "MAX_DECODE_SEGMENT", 1)
+    info = io.inspect_image(files[0])
     with pytest.raises(FocusStackError, match="segment exceeds"):
-        io.inspect_image(files[0])
+        io.Source(info, tmp_path, 0, decoder_budget=1)
 
 
 def test_resource_ram_limit(scene, write_frames, tmp_path, monkeypatch):
     import focusstack.memory as memory
     files = write_frames([scene])
-    monkeypatch.setattr(memory.psutil, "virtual_memory", lambda: type("RAM", (), {"available": 1})())
+    monkeypatch.setattr(memory.psutil, "virtual_memory", lambda: type("RAM", (), {"available": 1, "total": 1})())
     with pytest.raises(FocusStackError, match="working RAM"):
         stack(files, tmp_path / "result.tif", config(tmp_path))
 
@@ -220,7 +220,7 @@ def test_cli_smoke(scene, planes, write_frames, tmp_path):
     image = tifffile.imread(output)
     assert image.dtype == np.uint16 and image.shape == scene.shape
     version = subprocess.run(["focusstack", "--version"], capture_output=True, text=True)
-    assert version.returncode == 0 and "0.1.0" in version.stdout
+    assert version.returncode == 0 and "0.2.0" in version.stdout
 
 
 @pytest.mark.parametrize("compression", [None, "zlib"])
