@@ -1,0 +1,1 @@
+Shared engine resource ownership. Metal shader sources are bundled from MetalEngine/Kernels by Package.swift. Future model resources will use the same package bundle. UI assets remain in the host application.

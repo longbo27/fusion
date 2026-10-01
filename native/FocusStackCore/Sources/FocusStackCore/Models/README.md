@@ -1,0 +1,1 @@
+No production model is shipped. Future Core ML assets belong to FocusStackCore and must be packaged once for macOS, iOS, and iPadOS. A model must pass numerical, photographic, memory, and placement validation before use.

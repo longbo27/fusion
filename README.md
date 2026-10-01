@@ -193,3 +193,36 @@ favored reducing rescans, flushes and unnecessary reads without queue complexity
 Native Apple Silicon behavior is architecturally supported but needs validation
 on physical macOS hardware. Full-size generated workloads and exact limitations
 are reported individually in the measurement document.
+
+## Native V2 Foundation
+
+The Python 0.2.0 / V1.1 implementation above remains the golden reference at
+`a0680d224c3c91a82bef13f318d77d2b60e7ffc3` (annotated `python-v1.1` tag).
+Native development is isolated on `native-v2`; no Python runtime is used by the app.
+
+Open `native/FocusStack.xcodeproj` and use the shared `FocusStack` scheme. The
+Swift 6 SwiftUI app targets Apple Silicon/macOS 14+. Its shared
+`native/FocusStackCore` Swift package also targets iOS 17+/iPadOS, with all UI
+and AppKit file picking isolated in the macOS host. Metal 4 features are runtime
+gated on macOS 26+/iOS 26+. Foundation includes exact RGB16 GPU copy, Float32
+luminance/Sobel/Tenengrad, bounded reusable tile resources, hardware/Core ML
+inspection, original ICC metadata retention, and experimental Vision optical flow.
+It does not yet implement complete focus stacking or ship an AI model.
+
+```sh
+# Per-command override if xcode-select still selects Command Line Tools:
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+xcodebuild -project native/FocusStack.xcodeproj -scheme FocusStack \
+  -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/FocusStackNativeDerived test
+xcodebuild -project native/FocusStack.xcodeproj -scheme FocusStack \
+  -configuration Release -derivedDataPath /tmp/FocusStackNativeDerived build
+/tmp/FocusStackNativeDerived/Build/Products/Release/FocusStackBenchmarks
+PYTHONPATH="$PWD" .venv/bin/python native/Tools/generate_reference_fixtures.py
+```
+
+ImageIO cropping is **not** a production bounded TIFF decoder. The app inspects
+large TIFF metadata and rejects large pixel reads. See measured findings and
+future TIFF backend requirements in [native architecture](native/Docs/ARCHITECTURE.md),
+[local hardware](native/Docs/LOCAL_HARDWARE.md), and
+[native baseline](native/Docs/NATIVE_BASELINE.md). Generated images, logs, and build
+products stay outside Git.

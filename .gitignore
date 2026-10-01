@@ -14,3 +14,17 @@ __pycache__/
 build/
 dist/
 .venv/
+
+# Native macOS/Xcode outputs
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcresult
+*.xcarchive
+*.dSYM/
+*.air
+*.metallib
+*.metal-ar
+native/BenchmarkResults/
+.build/
+.swiftpm/xcode/
