@@ -1,0 +1,7 @@
+numpy>=1.26,<3
+opencv-python-headless>=4.8,<5
+tifffile>=2024.8.30
+imagecodecs>=2024.6.1
+psutil>=5.9
+tqdm>=4.66
+pytest>=8

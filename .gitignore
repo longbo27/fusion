@@ -1,0 +1,16 @@
+data/
+input/
+outputs/
+tmp/
+*.tif
+*.tiff
+*.TIF
+*.TIFF
+.DS_Store
+__pycache__/
+.pytest_cache/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
