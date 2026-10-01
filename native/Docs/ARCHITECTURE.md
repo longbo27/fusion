@@ -45,3 +45,14 @@ Vision flow remains optional: the measured 128² request was ~495 ms, much slowe
 ## Evidence and limits
 
 See [V2.1 results](V2_1_RESULTS.md), [TIFF backend](TIFF_BACKEND.md), [Metal parity](METAL_PARITY.md) and [ML prototype](ML_PROTOTYPE.md). These distinguish complete TIFF integrity validation from sampled photographic parity. Python is still the quality reference: sparse score ties cause source-label/output differences, including ten channel values above one code in the sampled real stack. No bit-exact replacement, production deghost quality, physical iOS validation or broad registration robustness is claimed.
+
+
+## V2.2 candidate deghost and registration
+
+Registration now reports independent ambiguity evidence and rejects questionable transforms before full-resolution fusion. FocusMotionNetV1 consumes a fixed top-candidate/temporal feature contract, with native 256/208 sliding patches. Core ML backend choice uses validated local warm measurements; an optional compatible external Metal ML package participates in the same decision. Portable model/shader resources remain shared and AppKit remains host-only.
+
+Motion components currently retain captured reference ownership. The unchanged static pyramid is reconstructed, then strong-motion final projection removes every Laplacian contribution in the detected region. This preserves exact static output outside masks while preventing coarse-level reintroduction. Candidate logits do not yet prove a better component source. Debug previews are bounded and opt-in; mask-only readback and UI overlays are separate from photographic RGB16 output.
+
+Deflate strip encoding can use two bounded workers on larger desktop workloads; mobile defaults to one. Worker buffers are admitted against the current OS/RSS/codec budget; the TIFF handle has one owner and serialized raw-strip publication. Full decoded-pixel and ICC validation precedes exclusive atomic publication. None/LZW/tiled encoding retains the serial path.
+
+See [V2.2 results](V2_2_RESULTS.md), [model](DEGHOST_MODEL.md) and [registration](REGISTRATION_ROBUSTNESS.md). Historical V2.1 benchmarks remain intact. Actual quality target misses and reference-defocus/static-false-positive tradeoffs are recorded; neither synthetic masks nor the existence of ANE proves photographic production quality.

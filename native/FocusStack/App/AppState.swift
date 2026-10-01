@@ -7,12 +7,17 @@ import UniformTypeIdentifiers
 @MainActor
 @Observable final class AppState {
     var hardware = HardwareReport.collect()
-    var log = "Native V2.1 ready. Synthetic motion-mask prototype available; AI defaults Off."
+    var log = "Native V2.2 ready. Candidate motion model available; AI defaults Off for review."
     var stackURLs: [URL] = []
     var quality = StackQuality.maximum
     var aiMode = AIDeghostMode.off
     var stackProgress = 0.0
     var stackReport: NativeStackReport?
+    var exportDiagnostics=false
+    var diagnosticDirectory:URL?
+    var registrationDiagnostics:RegistrationDiagnostics?
+    var overlayMotion=true
+    var diagnosticMap="ownership_map"
     var metadata: ImageMetadata?
     var benchmark: BenchmarkReport?
     var busy = false
@@ -48,16 +53,16 @@ import UniformTypeIdentifiers
         guard !busy,!stackURLs.isEmpty else{return}
         let panel=NSSavePanel();panel.allowedContentTypes=[.tiff];panel.nameFieldStringValue="FocusStack-Native.tif"
         guard panel.runModal() == .OK,let output=panel.url else{return}
-        let inputs=stackURLs,quality=quality,ai=aiMode;busy=true;stackProgress=0
+        let inputs=stackURLs,quality=quality,ai=aiMode,debug=exportDiagnostics ? output.deletingPathExtension().appendingPathExtension("diagnostics"):nil;busy=true;stackProgress=0;registrationDiagnostics=nil;diagnosticDirectory=nil
         task=Task{
             defer{busy=false}
             do{
-                let report=try await NativeStackEngine().run(inputs:inputs,output:output,quality:quality,aiMode:ai){[weak self] message,fraction in
+                let report=try await NativeStackEngine().run(inputs:inputs,output:output,quality:quality,aiMode:ai,debugDirectory:debug){[weak self] message,fraction in
                     Task{@MainActor in self?.stackProgress=fraction;self?.append(message)}
                 }
-                stackReport=report;append("Completed \(report.width)×\(report.height) RGB16: \(String(format:"%.2f",report.totalSeconds)) s; full output pixels and exact ICC validated.")
-                if ai != .off {append("AI is a synthetic mask prototype. Photographic RGB comes exclusively from source frames.")}
-            }catch{append(error.localizedDescription)}
+                stackReport=report;diagnosticDirectory=debug;registrationDiagnostics=report.alignment.last?.diagnostics;append("Completed \(report.width)×\(report.height) RGB16: \(String(format:"%.2f",report.totalSeconds)) s; full output pixels and exact ICC validated.")
+                if let model=report.modelTiming {append("Motion backend: \(model.backend.rawValue), calibrated warm \(String(format:"%.2f",model.warmMS)) ms. Photographic RGB comes exclusively from captured frames.")}
+            }catch{if let rejected=error as? RegistrationRejected{registrationDiagnostics=rejected.diagnostics};append(error.localizedDescription)}
             hardware=HardwareReport.collect()
         }
     }

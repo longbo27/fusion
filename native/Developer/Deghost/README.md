@@ -1,0 +1,9 @@
+# External photographic annotations
+
+Keep originals, crops, masks, weights and logs outside Git. Prepare at most four aligned candidates and a bounded 256/512 crop with annotations.py. --transforms takes a JSON array of source→reference 2×3 similarity matrices, --region X Y WIDTH HEIGHT uses reference coordinates. --group identifies the ORIGINAL STACK; assign every crop from a stack to only one split. The trainer rejects group leakage. --split train/validation is explicit.
+
+The external annotation JSON has `reviewed: true` only after human review and `regions: [{label: "static"|"motion"|"ignore", polygon: [[x,y],...], preferredSource: 0}]`. All unannotated pixels are ignore. Source crops are PNG previews explicitly reduced RGB16>>8, never production pixel replacements. preferredSource selects a captured frame; absent/uncertain source ownership remains ignore. Conflicting polygons follow listed order. Review at 100%/200% with source previews and native diagnostics before marking reviewed.
+
+Motion-mask PNG values: 0 static, 1 moving, 255 ignore. Preferred-owner PNG values: 0 reference, 1 best, 2 second, 3 third, 255 uncertain. Per-pixel candidate ordering is stored in the feature fixture. Classifying cloud/water from appearance alone is insufficient: annotate actual temporal changes. Synthetic ground truth and unreviewed real crops must never be presented as manually verified photographic truth.
+
+`train.py --external DIRECTORY` accepts reviewed example.npz/manifest pairs, mixes training crops at bounded batch size and reports held-out real labels separately. Never split overlapping crops or the same original stack between train/validation. The local three-frame Hasselblad stack is reserved for final validation; its original pixels are not used to tune the held-out synthetic thresholds.

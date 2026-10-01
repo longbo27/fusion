@@ -3,9 +3,9 @@ Keeps the Xcode 27 separate-Metal-toolchain lookup workaround in a temporary tre
 never edits Xcode, xcode-select, installed tools, or system security settings.
 """
 import argparse,pathlib,subprocess,tempfile,shutil
-p=argparse.ArgumentParser();p.add_argument('model');p.add_argument('output');args=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('model');p.add_argument('output');p.add_argument('--target',default='macos26.0',choices=['macos26.0','ios26.0']);args=p.parse_args()
 tool=pathlib.Path(subprocess.check_output(['xcrun','-f','metal-package-builder'],text=True).strip())
-command=['-ml','--mtargetos','macos26.0',str(pathlib.Path(args.model).resolve()),'-o',str(pathlib.Path(args.output).resolve())]
+command=['-ml','--mtargetos',args.target,str(pathlib.Path(args.model).resolve()),'-o',str(pathlib.Path(args.output).resolve())]
 result=subprocess.run([str(tool)]+command,capture_output=True,text=True)
 if result.returncode==0:print(result.stdout);raise SystemExit(0)
 if 'could not find coremlcompiler' not in result.stderr:print(result.stderr);raise SystemExit(result.returncode)

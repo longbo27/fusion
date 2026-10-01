@@ -1,0 +1,3 @@
+# Core ML protobufs and weights are binary source resources.
+*.mlmodel binary
+*.bin binary

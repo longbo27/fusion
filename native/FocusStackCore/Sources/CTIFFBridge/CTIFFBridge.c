@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <pthread.h>
+#include <zlib.h>
 
 struct FSTiff { TIFF *tif; FSTiffInfo info; char error[1024]; };
 static int fs_error_handler(TIFF *tif, void *ctx, const char *module, const char *fmt, va_list args) {
@@ -130,7 +132,41 @@ static int fill_raw(int fd,uint8_t *buffer,uint32_t width,uint32_t height,uint32
  uint32_t rows=block_height<height-y?block_height:height-y,cols=block_width<width-x?block_width:width-x;
  for(uint32_t row=0;row<rows;row++)if(!pread_all(fd,buffer+(uint64_t)row*block_width*6,(size_t)cols*6,((uint64_t)(y+row)*width+x)*6))return 0;return 1;
 }
-int fs_write_tiff_from_raw(const char *raw,const char *temporary,uint32_t width,uint32_t height,uint16_t compression,uint32_t edge,uint32_t rps,int big,const void *icc,uint32_t icc_size,double dx,double dy,uint16_t unit,const char *artist,const char *copyright,const char *description,uint64_t budget,char *error,size_t error_size){
+// A fixed two-slot batch: only workers compress; the owner alone touches TIFF.
+// No pending-strip queue, source-indexed buffers, or shared zlib state.
+typedef struct { int fd,ok;uint32_t width,height,y,rows;uint8_t *raw,*encoded;uLongf length; } FSZipJob;
+static void *zip_strip(void *argument){
+ FSZipJob *j=argument;uint64_t bytes=(uint64_t)j->width*j->rows*6;
+ j->ok=fill_raw(j->fd,j->raw,j->width,j->height,0,j->y,j->width,j->rows);
+ if(!j->ok)return NULL;
+ uint16_t *values=(uint16_t*)j->raw;
+ for(uint32_t row=0;row<j->rows;row++){
+  uint16_t *v=values+(uint64_t)row*j->width*3;
+  for(uint64_t k=(uint64_t)j->width*3;k>3;k--)v[k-1]=(uint16_t)(v[k-1]-v[k-4]);
+ }
+ j->length=compressBound((uLong)bytes);
+ j->ok=compress2(j->encoded,&j->length,j->raw,(uLong)bytes,Z_DEFAULT_COMPRESSION)==Z_OK;return NULL;
+}
+static int parallel_strips(FSTiff *f,int fd,uint32_t width,uint32_t height,uint32_t rows,uint64_t budget){
+ uint64_t bytes=(uint64_t)width*rows*6;
+ if(bytes>ULONG_MAX || bytes>SIZE_MAX)return fail(f,"Parallel segment overflow");
+ uLong bound=compressBound((uLong)bytes);
+ if(bytes>budget/12 || bound>budget/12 || budget<4194304)return fail(f,"Parallel compression admission rejected");
+ if(TIFFIsByteSwapped(f->tif))return fail(f,"Parallel predictor requires native-endian output");
+ FSZipJob jobs[2]={0};int ok=1;
+ for(int i=0;i<2;i++){jobs[i].fd=fd;jobs[i].width=width;jobs[i].height=height;jobs[i].raw=malloc((size_t)bytes);jobs[i].encoded=malloc(bound);if(!jobs[i].raw||!jobs[i].encoded)ok=0;}
+ for(uint64_t y=0;ok&&y<height;y+=(uint64_t)rows*2){
+  pthread_t threads[2];int launched[2]={0},active=0;
+  for(int i=0;i<2&&y+(uint64_t)i*rows<height;i++){
+   jobs[i].y=(uint32_t)(y+(uint64_t)i*rows);jobs[i].rows=height-jobs[i].y<rows?height-jobs[i].y:rows;active++;
+   if(pthread_create(&threads[i],NULL,zip_strip,&jobs[i])==0)launched[i]=1;else zip_strip(&jobs[i]);
+  }
+  for(int i=0;i<active;i++){if(launched[i])pthread_join(threads[i],NULL);if(!jobs[i].ok)ok=0;}
+  for(int i=0;ok&&i<active;i++)if(TIFFWriteRawStrip(f->tif,jobs[i].y/rows,jobs[i].encoded,(tmsize_t)jobs[i].length)<0)ok=0;
+ }
+ for(int i=0;i<2;i++){free(jobs[i].raw);free(jobs[i].encoded);}return ok;
+}
+int fs_write_tiff_from_raw(const char *raw,const char *temporary,uint32_t width,uint32_t height,uint16_t compression,uint32_t edge,uint32_t rps,int big,const void *icc,uint32_t icc_size,double dx,double dy,uint16_t unit,const char *artist,const char *copyright,const char *description,uint32_t workers,uint64_t budget,char *error,size_t error_size){
  FSTiff f={0};int fd=open(raw,O_RDONLY);if(fd<0){snprintf(error,error_size,"Cannot open raw staging");return 0;}
  uint64_t pixels=(uint64_t)width*height;if(pixels>(UINT64_MAX-1048576)/12){close(fd);return 0;}
  f.tif=open_checked(&f,temporary,(big||pixels*12+1048576>UINT32_MAX)?"w8":"w",budget);
@@ -143,8 +179,10 @@ int fs_write_tiff_from_raw(const char *raw,const char *temporary,uint32_t width,
  if(artist&&*artist)ok=ok&&TIFFSetField(f.tif,TIFFTAG_ARTIST,artist);if(copyright&&*copyright)ok=ok&&TIFFSetField(f.tif,TIFFTAG_COPYRIGHT,copyright);if(description&&*description)ok=ok&&TIFFSetField(f.tif,TIFFTAG_IMAGEDESCRIPTION,description);
  uint32_t bw=edge?edge:width,bh=edge?edge:rps;uint64_t bytes=(uint64_t)bw*bh*6;
  if(bytes>budget/6||bytes>SIZE_MAX||bytes>INT64_MAX)ok=fail(&f,"Output segment exceeds codec memory envelope");
- uint8_t *buffer=ok?malloc((size_t)bytes):NULL;if(!buffer)ok=0;
- for(uint32_t y=0;ok&&y<height;y+=bh)for(uint32_t x=0;ok&&x<width;x+=bw){
+ int parallel=workers==2&&!edge&&(compression==COMPRESSION_ADOBE_DEFLATE||compression==COMPRESSION_DEFLATE);
+ if(ok&&parallel)ok=parallel_strips(&f,fd,width,height,rps,budget);
+ uint8_t *buffer=ok&&!parallel?malloc((size_t)bytes):NULL;if(!parallel&&!buffer)ok=0;
+ for(uint32_t y=0;ok&&!parallel&&y<height;y+=bh)for(uint32_t x=0;ok&&x<width;x+=bw){
   if(!fill_raw(fd,buffer,width,height,x,y,bw,bh)){ok=fail(&f,"Raw staging read failed");break;}
   if(edge){if(TIFFWriteEncodedTile(f.tif,TIFFComputeTile(f.tif,x,y,0,0),buffer,(tmsize_t)bytes)<0)ok=0;}
   else {uint32_t rows=height-y<bh?height-y:bh;if(TIFFWriteEncodedStrip(f.tif,y/rps,buffer,(tmsize_t)((uint64_t)width*rows*6))<0)ok=0;}

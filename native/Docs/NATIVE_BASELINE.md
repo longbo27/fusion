@@ -147,3 +147,14 @@ PATH="$PWD/.venv/bin:$PATH" .venv/bin/python -m pytest -q
 Logs, Xcode products and real TIFFs stay outside Git. The only committed fixture
 is ~4 KiB deterministic synthetic JSON. These summaries do not certify full
 native stacking, additional TIFF codecs, model placement, or mobile hardware.
+
+
+## V2.2 measured continuation (2026-10-02)
+
+Historical Foundation/V2.1 observations above remain intact. See [V2.2 results](V2_2_RESULTS.md) for the full workload, per-category quality and stage tables. Final real3×101.897MP Maximum RGB16 runs: Off41.117s, Auto47.080s, High49.137s. Two-worker Deflate encoding11.204/10.816/11.399s, compared with the pre-change21.019s; differing local cache conditions limit controlled speedup claims. Real peak RSS up to353.609MiB, tracked Metal up to801.078MiB. Exact decoded output/ICC validation executes.
+
+Fresh full3/10/20×100MP known-identity AI Off runs:32.462/71.458/153.608s; peak RSS70.375/70.500/70.641MiB, tracked Metal795.078MiB each. Raw staging600,000,000bytes;20-source output239,300,176bytes. These validate bounded architecture, not20-frame AI quality or periodic registration.
+
+Final Core ML warm means on the256² fixture: CPU4.586ms, CPU+GPU2.843ms, CPU+ANE1.805ms, all2.826ms. Warm Metal ML medianGPU1.281ms/bridge2.045ms, with persistent resources and20 iterations; scopes differ from prediction-only Core ML. A separate runtime calibration can select either a Core ML configuration or a supplied compatible Metal package. MLComputePlan device labels are diagnostics, not a physical trace.
+
+86 native/87 Python tests,384 TIFF fixtures,24 strict/24 stable-policy parity fixtures, Debug/Release builds, shared iOS compile and a visible app launch pass. Motion IoU/recall goals remain unmet in several categories. The narrowed tie rule preserves the existing real ten channel outliers/max365 rather than reducing them. Production photographic quality remains unproven; AI defaults Off for review.

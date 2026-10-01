@@ -17,7 +17,7 @@ struct HardwareView: View {
                 GridRow { Text("Core ML devices"); Text(report.ml.devices.joined(separator: ", ")) }
                 GridRow { Text("Neural Engine detected"); Text(report.ml.neuralEngineDetected ? "Yes; model placement untested" : "Unavailable") }
                 GridRow { Text("Metal 4 / tensors / ML encoder"); Text("\(report.metal?.metal4 == true ? "Yes" : "No") / \(report.metal?.tensor == true ? "Yes" : "No") / \(report.metal?.machineLearningEncoder == true ? "Yes" : "No")") }
-                GridRow { Text("Model"); Text("No production model loaded.") }
+                GridRow { Text("Model"); Text("FocusMotionNetV1 available; loaded when AI is enabled.") }
                 GridRow { Text("Vision"); Text("Experimental optical-flow API available") }
             }.frame(maxWidth: .infinity,alignment: .leading).padding(8)
         }

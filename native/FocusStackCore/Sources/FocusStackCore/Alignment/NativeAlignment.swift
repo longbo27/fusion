@@ -36,10 +36,15 @@ public struct ReducedImage:Sendable {
     }
     func normalized()throws->ReducedImage {let mean=pixels.reduce(0,+)/Float(pixels.count),variance=pixels.reduce(Float(0)){$0+($1-mean)*($1-mean)}/Float(pixels.count),scale=max(sqrt(variance),0.001);return try ReducedImage(width:width,height:height,pixels:pixels.map{($0-mean)/scale})}
 }
-public struct AlignmentReport:Codable,Sendable {public let transform:SimilarityTransform,correlation:Double,overlap:Double,seconds:Double,method:String}
+public struct AlignmentReport:Codable,Sendable {
+    public let transform:SimilarityTransform,correlation:Double,overlap:Double,seconds:Double,method:String
+    public let diagnostics:RegistrationDiagnostics
+    public var registrationConfidence:Double{diagnostics.registrationConfidence}
+    public var registrationAmbiguous:Bool{diagnostics.registrationAmbiguous}
+}
 public enum NativeAlignment {
     // Apple Accelerate 2D FFT, zero-padded bounded images. Peak is source->reference.
-    private static func phase(_ ref:ReducedImage,_ current:ReducedImage)throws->(Float,Float){
+    private static func phase(_ ref:ReducedImage,_ current:ReducedImage)throws->PhaseEvidence{
         let n=1<<Int(ceil(log2(Double(max(ref.width,ref.height))))),count=n*n,logN=vDSP_Length(log2(Double(n)))
         guard let setup=vDSP_create_fftsetup(logN,FFTRadix(kFFTRadix2))else{throw NativeError.resource("FFT setup failed")};defer{vDSP_destroy_fftsetup(setup)}
         var rr=[Float](repeating:0,count:count),ri=rr,cr=rr,ci=rr
@@ -51,19 +56,28 @@ public enum NativeAlignment {
             for i in 0..<count{let real=r[i]*c[i]+im[i]*cm[i],imag=im[i]*c[i]-r[i]*cm[i],mag=max(hypot(real,imag),1e-9);r[i]=real/mag;im[i]=imag/mag}
             vDSP_fft2d_zip(setup,&a,1,0,logN,logN,FFTDirection(FFT_INVERSE))
         }}}}
-        let index=rr.indices.max{rr[$0]<rr[$1]}!,x=index%n,y=index/n
-        return(Float(x>n/2 ? x-n:x),Float(y>n/2 ? y-n:y))
+        var peaks=[PhasePeak]()
+        for _ in 0..<6 {
+            let index=rr.indices.max{rr[$0]<rr[$1]}!,x=index%n,y=index/n
+            peaks.append(PhasePeak(x:Float(x>n/2 ? x-n:x),y:Float(y>n/2 ? y-n:y),value:rr[index]))
+            for dy in -4...4{for dx in -4...4{rr[((y+dy+n)%n)*n+(x+dx+n)%n] = -Float.greatestFiniteMagnitude}}
+        }
+        return PhaseEvidence(peaks:peaks)
     }
     private static func solve(_ h:[Double],_ rhs:[Double])->[Double]? {
         var a=(0..<4).map{i in Array(h[i*4..<i*4+4])+[rhs[i]]}
         for i in 0..<4{let pivot=(i..<4).max{abs(a[$0][i])<abs(a[$1][i])}!;a.swapAt(i,pivot);guard abs(a[i][i])>1e-10 else{return nil};let d=a[i][i];for j in i...4{a[i][j]/=d};for k in 0..<4 where k != i{let f=a[k][i];for j in i...4{a[k][j]-=f*a[i][j]}}};return a.map{$0[4]}
     }
-    public static func align(reference:ReducedImage,candidate:ReducedImage,fullWidth:Int,fullHeight:Int)throws->AlignmentReport {
+    public static func align(reference:ReducedImage,candidate:ReducedImage,fullWidth:Int,fullHeight:Int,previousTransform:SimilarityTransform? = nil)throws->AlignmentReport {
         guard reference.width==candidate.width,reference.height==candidate.height,reference.width>=16,reference.height>=16,max(reference.width,reference.height)<=1024 else{throw NativeError.invalid("Registration requires equal reduced dimensions, at least 16×16 and at most 1024 per edge")}
-        let started=CACurrentMediaTime(),coarse=try reference.resized(edge:256),other=try candidate.resized(edge:256),translation=try phase(coarse,other)
+        let mean=reference.pixels.reduce(0,+)/Float(reference.pixels.count)
+        let variance=Double(reference.pixels.reduce(Float(0)){$0+($1-mean)*($1-mean)}/Float(reference.pixels.count))
+        if variance<1e-5{throw RegistrationRejected(diagnostics:RegistrationDiagnostics(phasePeakRatio:0,competingCorrelationGap:0,textureVariance:variance,periodicCorrelation:0,pyramidDisagreementPixels:0,localAgreement:0,continuityJumpFraction:0,registrationConfidence:0,registrationAmbiguous:true,reasons:["insufficient texture"]))}
+        let started=CACurrentMediaTime(),coarse=try reference.resized(edge:256),other=try candidate.resized(edge:256),phaseEvidence=try phase(coarse,other),translation=phaseEvidence.peaks[0]
         // Ref->source centered coordinates for optimization. Constrain all iterates
         // to uniform scale/rotation; Huber residuals limit local motion influence.
-        var a:Float=1,b:Float=0,tx = -translation.0,ty = -translation.1,lastW=coarse.width
+        var a:Float=1,b:Float=0,tx = -translation.x,ty = -translation.y,lastW=coarse.width
+        var pyramid=[SimilarityTransform]()
         for edge in [256,512,1024]{
             let rawR=try reference.resized(edge:edge),rawC=try candidate.resized(edge:edge),r=try rawR.normalized(),c=try rawC.normalized(),ratio=Float(r.width)/Float(lastW)
             tx*=ratio;ty*=ratio;lastW=r.width;let cx=Float(r.width-1)/2,cy=Float(r.height-1)/2,sampling=max(1,r.width/512)
@@ -81,6 +95,9 @@ public enum NativeAlignment {
                 a+=da;b+=db;tx+=dx;ty+=dy;if abs(da)+abs(db)<1e-6&&abs(dx)+abs(dy)<0.001{break}
                 guard hypot(a,b)>=0.8,hypot(a,b)<=1.25,abs(atan2(b,a))<=Float.pi/12 else{throw NativeError.invalid("Native registration exceeds similarity limits")}
             }
+            let fullRatio=Double(fullWidth)/Double(r.width)
+            let levelInverse=SimilarityTransform(a:Double(a),b:Double(b),tx:Double(tx+cx-a*cx+b*cy)*fullRatio,ty:Double(ty+cy-b*cx-a*cy)*fullRatio)
+            pyramid.append(levelInverse.inverse)
         }
         let w=reference.width,h=reference.height,cx=Float(w-1)/2,cy=Float(h-1)/2
         // last stage already has the same <=1024 registration dimensions.
@@ -89,6 +106,8 @@ public enum NativeAlignment {
         let count=Double(n),correlation=(sxy-sx*sy/count)/max(sqrt((sxx-sx*sx/count)*(syy-sy*sy/count)),1e-12),overlap=count/Double(((w-4+1)/2)*((h-4+1)/2))
         guard correlation>=0.2,overlap>=0.6 else{throw NativeError.invalid("Native registration rejected: correlation \(correlation), overlap \(overlap)")}
         let ratio=Double(fullWidth)/Double(w),inverse=SimilarityTransform(a:Double(a),b:Double(b),tx:Double(tx+cx-a*cx+b*cy)*ratio,ty:Double(ty+cy-b*cx-a*cy)*ratio)
-        return AlignmentReport(transform:inverse.inverse,correlation:correlation,overlap:overlap,seconds:CACurrentMediaTime()-started,method:"Accelerate phase correlation + Huber similarity Gauss–Newton (256/512/1024)")
+        let diagnostics=try RegistrationConfidence.inspect(reference:reference,candidate:candidate,transform:inverse.inverse,fullWidth:fullWidth,fullHeight:fullHeight,phase:phaseEvidence,pyramid:pyramid,previous:previousTransform,finalCorrelation:correlation)
+        guard !diagnostics.registrationAmbiguous else{throw RegistrationRejected(diagnostics:diagnostics)}
+        return AlignmentReport(transform:inverse.inverse,correlation:correlation,overlap:overlap,seconds:CACurrentMediaTime()-started,method:"Accelerate phase + Huber similarity + independent ambiguity validation",diagnostics:diagnostics)
     }
 }

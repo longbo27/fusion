@@ -14,7 +14,7 @@ The plan includes ROI RGBA bytes, 3×largest required decoded segment, 2×larges
 
 ## Physical 101.897952MP source measurement
 
-Source: 11656×8742, RGB16, classic little-endian TIFF, orientation 1, uncompressed, one strip, RowsPerStrip=8742, StripOffset=4664, StripByteCount=611,380,512. Embedded ICC is 560 bytes (Adobe RGB 1998), resolution 300×300 dpi. Private filenames/photos are not committed.
+Source: 11656×8742, RGB16, classic big-endian TIFF (corrected by a V2.2 header audit; decoding already handled byte order correctly), orientation 1, uncompressed, one strip, RowsPerStrip=8742, StripOffset=4664, StripByteCount=611,380,512. Embedded ICC is 560 bytes (Adobe RGB 1998), resolution 300×300 dpi. Private filenames/photos are not committed.
 
 Fresh-process 1024² origin ROI on M1 Max:
 

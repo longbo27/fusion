@@ -9,9 +9,10 @@ public struct OperationPlacement: Sendable {
 }
 public actor ComputePlanInspector {
     public init() {}
-    public func inspect(compiledModelURL: URL) async throws -> [OperationPlacement] {
+    public func inspect(compiledModelURL: URL,computeUnits:PrototypeComputeUnits = .all) async throws -> [OperationPlacement] {
         guard #available(macOS 14.4, iOS 17.4, *) else { throw NativeError.unavailable("MLComputePlan requires macOS 14.4") }
-        let plan = try await MLComputePlan.load(contentsOf: compiledModelURL, configuration: CoreMLRunner.configuration())
+        let configuration=MLModelConfiguration();configuration.computeUnits=computeUnits.units
+        let plan = try await MLComputePlan.load(contentsOf: compiledModelURL, configuration: configuration)
         var reports: [OperationPlacement] = []
         func visit(_ block: MLModelStructure.Program.Block) {
             for operation in block.operations {

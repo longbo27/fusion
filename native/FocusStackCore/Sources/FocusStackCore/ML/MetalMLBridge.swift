@@ -3,12 +3,12 @@ import Metal
 
 // No CPU readback is required by this contract. The caller binds shared tensor GPU
 // resources into an argument table and owns residency/lifetime until GPU completion.
-// No model package/pipeline exists in Foundation, so no inference is dispatched.
+// The host/session supplies a validated compatible compiled model package.
 public struct MetalMLBridge {
     public let capabilities: MetalCapabilities
     public init(capabilities: MetalCapabilities) { self.capabilities = capabilities }
     public var status: String {
-        capabilities.machineLearningEncoder && capabilities.tensor ? "Tensor/ML encoder available. No production model loaded." : "ML path unavailable; standard Metal compute remains supported."
+        capabilities.machineLearningEncoder && capabilities.tensor ? "Tensor/ML encoder available; compatible compiled model package supplied by host." : "ML path unavailable; standard Metal compute remains supported."
     }
     #if compiler(>=6.2)
     @available(macOS 26.0, iOS 26.0, *)

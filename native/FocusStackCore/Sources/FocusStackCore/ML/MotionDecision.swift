@@ -3,9 +3,10 @@ import Metal
 import Foundation
 
 public enum AIDeghostMode:String,CaseIterable,Codable,Sendable {case off,auto,high
-    public var threshold:Float{self == .high ? 0.85:0.97}
+    public var threshold:Float{self == .high ? 0.65:0.90}
 }
-// Synchronously owned by NativeStackEngine. Uses shared Metal storage directly as
+// Retained solely for V2.1 fixture compatibility; production uses FocusMotionModel.
+// Synchronously owned by the developer benchmark. Uses shared Metal storage directly as
 // Core ML input; physical Core ML transfers/placement are not promised by this API.
 final class MotionDecisionModel {
     private let model:MLModel

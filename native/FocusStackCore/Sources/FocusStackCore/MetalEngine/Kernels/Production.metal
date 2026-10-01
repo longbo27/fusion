@@ -1,6 +1,7 @@
 #include <metal_stdlib>
 using namespace metal;
 #pragma clang fp contract(off)
+constant float fsEpsilon=0x1.0p-23f;
 struct P { uint4 size; float4 value; float4 map0; float4 map1; };
 inline int ref101(int x,int n){if(n<=1)return 0;while(x<0||x>=n)x=x<0?-x:2*n-2-x;return x;}
 inline float4 at(device const float4*a,int x,int y,uint w,uint h){return a[ref101(y,h)*w+ref101(x,w)];}
@@ -72,25 +73,41 @@ kernel void fsEvidence(device const float4*a [[buffer(0)]],device const float4*n
 kernel void fsScore(device const float4*e [[buffer(0)]],device const float4*n [[buffer(1)]],device float4*s [[buffer(2)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
  if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;float v=p.value.z==1?e[k].x:(max(e[k].x-e[k].z*p.value.x*1.5,0.0f)+.2*max(e[k].y-n[k].x*.5,0.0f))*n[k].y;
  s[k].x+=p.value.y*v;
+ // First-order Float32 forward-error envelope for the local nonnegative score
+ // terms, retaining cancellation condition. 32 rounded aggregation/score ops.
+ float terms=p.value.z==1?abs(e[k].x):(abs(e[k].x)+abs(e[k].z*p.value.x*1.5)+.2*(abs(e[k].y)+abs(n[k].x*.5)))*abs(n[k].y);
+ s[k].y+=p.value.y*terms*(32*fsEpsilon/(1-32*fsEpsilon));
 }
 kernel void fsClear(device float4*a [[buffer(0)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){if(any(q>=p.size.xy))return;a[q.y*p.size.x+q.x]=float4(p.value.x);}
-kernel void fsTop(device const float4*s [[buffer(0)]],device const float4*g [[buffer(1)]],device float4*top [[buffer(2)]],device uint4*ids [[buffer(3)]],device float4*guide [[buffer(4)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
- if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;float v=s[k].x;uint id=uint(p.value.x);float4 t=top[k];uint4 a=ids[k];
- if(v>t.x){t.z=t.y;t.y=t.x;t.x=v;a.z=a.y;a.y=a.x;a.x=id;guide[k].x=g[k].x;}
- else if(v>t.y){t.z=t.y;t.y=v;a.z=a.y;a.y=id;}
- else if(v>t.z){t.z=v;a.z=id;}top[k]=t;ids[k]=a;
+kernel void fsTop(device const float4*s [[buffer(0)]],device const float4*g [[buffer(1)]],device float4*top [[buffer(2)]],device uint4*ids [[buffer(3)]],device float4*guide [[buffer(4)]],device float4*luma [[buffer(6)]],device float4*temporal [[buffer(7)]],device float4*uncertainty [[buffer(8)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
+ if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;float v=s[k].x;uint id=uint(p.value.x);float4 t=top[k],l=luma[k],u=uncertainty[k];uint4 a=ids[k];float gray=g[k].x/65535;
+ float4 m=temporal[k];if(id==0){m=float4(gray,0,gray,gray);l.w=gray;t.w=v;u.w=s[k].y;}
+ else{float delta=gray-m.x;m.x+=delta/float(id+1);m.y+=delta*(gray-m.x);m.z=min(m.z,gray);m.w=max(m.w,gray);}temporal[k]=m;
+ if(v>t.x){l.z=l.y;l.y=l.x;l.x=gray;u.z=u.y;u.y=u.x;u.x=s[k].y;t.z=t.y;t.y=t.x;t.x=v;a.z=a.y;a.y=a.x;a.x=id;guide[k].x=g[k].x;}
+ else if(v>t.y){l.z=l.y;l.y=gray;u.z=u.y;u.y=s[k].y;t.z=t.y;t.y=v;a.z=a.y;a.y=id;}
+ else if(v>t.z){l.z=gray;u.z=s[k].y;t.z=v;a.z=id;}top[k]=t;ids[k]=a;luma[k]=l;uncertainty[k]=u;
 }
 kernel void fsInvalidate(device const float4*rgb [[buffer(0)]],device float4*s [[buffer(1)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;if(rgb[k].w<.5)s[k].x=-1;}
 kernel void fsDepth(device const float4*t [[buffer(0)]],device const float4*g [[buffer(1)]],device float4*d [[buffer(2)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
  if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;float conf=clamp((max(t[k].x,0.0f)-max(t[k].y,0.0f))/max(t[k].x,1e-8f),0.0f,1.0f);
  float edge=clamp(length(gradients(g,q.x,q.y,p.size.x,p.size.y))/16000,0.0f,1.0f);d[k]=float4(conf,edge,g[k].x,max(clamp(conf*5,0.0f,1.0f),edge));
 }
-kernel void fsCleanup(device const float4*d [[buffer(0)]],device const float4*t [[buffer(1)]],device const uint4*ids [[buffer(2)]],device uint4*out [[buffer(3)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
+kernel void fsCleanup(device const float4*d [[buffer(0)]],device const float4*t [[buffer(1)]],device const uint4*ids [[buffer(2)]],device uint4*out [[buffer(3)]],device const float4*uncertainty [[buffer(6)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
  if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;uint values[9];int j=0;
  for(int dy=-1;dy<=1;dy++)for(int dx=-1;dx<=1;dx++)values[j++]=ids[clamp(int(q.y)+dy,0,int(p.size.y)-1)*p.size.x+clamp(int(q.x)+dx,0,int(p.size.x)-1)].x;
  for(int i=1;i<9;i++)for(int n=i;n>0&&values[n]<values[n-1];n--){uint v=values[n];values[n]=values[n-1];values[n-1]=v;}
  uint4 a=ids[k];uint med=values[4];bool allowed=(med==a.x&&t[k].x>=0)||(med==a.y&&t[k].y>=0)||(med==a.z&&t[k].z>=0);
  out[k]=ids[k];out[k].w=p.value.x>.2?(d[k].x<p.value.x?med:a.x):((d[k].x<p.value.x&&d[k].y<.35&&allowed)?med:a.x);
+ // Never override a spatial median decision, a protected thin edge, exact
+ // zero evidence, or the legacy Standard path. Stabilize only positive
+ // ambiguous scores where the existing cleanup retained the local winner.
+ if(p.value.y>0 && p.value.x<=.2 && d[k].x>0 && d[k].x<=64*fsEpsilon && d[k].y<.35 && !allowed && out[k].w==a.x && t[k].x>0){
+  float4 u=uncertainty[k];uint stable=a.x;
+  if(t[k].x-t[k].y<=u.x+u.y && t[k].y>=0)stable=min(stable,a.y);
+  if(t[k].x-t[k].z<=u.x+u.z && t[k].z>=0)stable=min(stable,a.z);
+  if(t[k].x-t[k].w<=u.x+u.w && t[k].w>=0)stable=0;
+  out[k].w=stable;
+ }
 }
 kernel void fsMask(device const uint4*ids [[buffer(0)]],device const float4*rgb [[buffer(1)]],device float4*m [[buffer(2)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;m[k]=float4(ids[k].w==uint(p.value.x)?1:0,0,0,0);}
 kernel void fsWeights(device const float4*mask [[buffer(0)]],device const float4*local [[buffer(1)]],device const float4*depth [[buffer(2)]],device const float4*rgb [[buffer(3)]],device float4*weights [[buffer(4)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
@@ -110,9 +127,12 @@ kernel void fsAccumulate(device const float4*rgb [[buffer(0)]],device const floa
 kernel void fsOwned(device const float4*rgb [[buffer(0)]],device const float4*w [[buffer(1)]],device float4*owned [[buffer(2)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;owned[k].xyz+=rgb[k].xyz*w[k].y;}
 kernel void fsNormalize(device float4*a [[buffer(0)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;a[k].xyz/=max(a[k].w,1e-8f);}
 kernel void fsReconstruct(device const float4*lap [[buffer(0)]],device const float4*coarse [[buffer(1)]],device float4*out [[buffer(2)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;out[k]=float4(lap[k].xyz+up(coarse,q.x,q.y,p.size.z,p.size.w).xyz,lap[k].w);}
-kernel void fsFinal(device const float4*rgb [[buffer(0)]],device const float4*owned [[buffer(1)]],device const float4*depth [[buffer(2)]],device const float4*reference [[buffer(3)]],device ushort4*out [[buffer(4)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
+kernel void fsFinal(device const float4*rgb [[buffer(0)]],device const float4*owned [[buffer(1)]],device const float4*depth [[buffer(2)]],device const float4*reference [[buffer(3)]],device ushort4*out [[buffer(4)]],constant P&p [[buffer(5)]],device const float4*motion [[buffer(6)]],uint2 q [[thread_position_in_grid]]){
  if(any(q>=p.size.xy))return;uint k=q.y*p.size.x+q.x;float protect=p.value.x==0?0:depth[k].w;float3 v=rgb[k].xyz*(1-protect)+owned[k].xyz*protect;
- if(rgb[k].w<=1e-8)v=reference[k].xyz;out[k]=ushort4(ushort3(clamp(rint(v),0.0f,65535.0f)),65535);
+ // Orthogonal final projection annihilates ALL reconstructed Laplacian levels
+ // in a strong dynamic region. The static pyramid stays unchanged, preventing
+ // a changed coarse weight from contaminating pixels outside the narrow mask.
+ if(motion[k].w>.5 || rgb[k].w<=1e-8)v=reference[k].xyz;out[k]=ushort4(ushort3(clamp(rint(v),0.0f,65535.0f)),65535);
 }
 kernel void fsMotionFeatures(device const float4*ref [[buffer(0)]],device const float4*candidate [[buffer(1)]],device const float4*depth [[buffer(2)]],device float*features [[buffer(3)]],constant P&p [[buffer(5)]],uint2 q [[thread_position_in_grid]]){
  if(any(q>=uint2(256)))return;uint x=min(p.size.z-1,uint((q.x+.5)*p.size.z/256)),y=min(p.size.w-1,uint((q.y+.5)*p.size.w/256)),k=y*p.size.z+x,j=q.y*256+q.x;

@@ -1,0 +1,1039 @@
+{
+  "resumedFromCheckpoint": true,
+  "externalTrainingExamples": 0,
+  "externalValidation": [],
+  "seed": 2201,
+  "validationSeed": 2207001,
+  "device": "mps",
+  "steps": 1500,
+  "hardSteps": 3000,
+  "seconds": 358.9819972089972,
+  "parameters": 124327,
+  "channels": [
+    "reference",
+    "best",
+    "second",
+    "third",
+    "reference_best_residual",
+    "reference_second_residual",
+    "normalized_residual",
+    "focus_confidence",
+    "reference_edge",
+    "label_disagreement",
+    "temporal_std",
+    "temporal_range"
+  ],
+  "outputs": [
+    "motion",
+    "blend_safety",
+    "ownership_confidence",
+    "reference",
+    "best",
+    "second",
+    "third"
+  ],
+  "categories": {
+    "grass": {
+      "iou": 0.8193341321112854,
+      "precision": 0.9062105083395002,
+      "recall": 0.8952495995968975,
+      "staticFalsePositiveRate": 0.0181640625,
+      "falseNegativeRate": 0.10475040040310245,
+      "ownershipAccuracy": 0.8632308959960937,
+      "tp": 397985,
+      "fp": 41190,
+      "fn": 46567,
+      "tn": 169618
+    },
+    "leaves": {
+      "iou": 0.8313089843616912,
+      "precision": 0.8429767056201902,
+      "recall": 0.9836229138111747,
+      "staticFalsePositiveRate": 0.001251220703125,
+      "falseNegativeRate": 0.016377086188825284,
+      "ownershipAccuracy": 0.9752761840820312,
+      "tp": 97599,
+      "fp": 18180,
+      "fn": 1625,
+      "tn": 537956
+    },
+    "branches": {
+      "iou": 0.9145783188242137,
+      "precision": 0.9334151351593024,
+      "recall": 0.9784109725997439,
+      "staticFalsePositiveRate": 0.00014426491477272728,
+      "falseNegativeRate": 0.021589027400256193,
+      "ownershipAccuracy": 0.9501510620117187,
+      "tp": 375792,
+      "fp": 26807,
+      "fn": 8292,
+      "tn": 244469
+    },
+    "hair": {
+      "iou": 0.828711497832357,
+      "precision": 0.8832514675931472,
+      "recall": 0.9306548925439163,
+      "staticFalsePositiveRate": 0.011269309303977272,
+      "falseNegativeRate": 0.06934510745608373,
+      "ownershipAccuracy": 0.9012176513671875,
+      "tp": 324390,
+      "fp": 42878,
+      "fn": 24171,
+      "tn": 263921
+    },
+    "flowers": {
+      "iou": 0.7342116611399426,
+      "precision": 0.8011585360906709,
+      "recall": 0.897817054432716,
+      "staticFalsePositiveRate": 0.007878621419270834,
+      "falseNegativeRate": 0.102182945567284,
+      "ownershipAccuracy": 0.949945068359375,
+      "tp": 98750,
+      "fp": 24509,
+      "fn": 11239,
+      "tn": 520862
+    },
+    "cloud": {
+      "iou": 0.7823475025059616,
+      "precision": 0.9363552448854937,
+      "recall": 0.8262867336037243,
+      "staticFalsePositiveRate": 4.2724609375e-05,
+      "falseNegativeRate": 0.17371326639627577,
+      "ownershipAccuracy": 0.8519683837890625,
+      "tp": 341853,
+      "fp": 23236,
+      "fn": 71869,
+      "tn": 218402
+    },
+    "water": {
+      "iou": 0.898817367319854,
+      "precision": 0.9432744161148341,
+      "recall": 0.9501763723466135,
+      "staticFalsePositiveRate": 0.0,
+      "falseNegativeRate": 0.04982362765338652,
+      "ownershipAccuracy": 0.933685302734375,
+      "tp": 380615,
+      "fp": 22889,
+      "fn": 19958,
+      "tn": 231898
+    },
+    "waves": {
+      "iou": 0.900124466571835,
+      "precision": 0.9392818897971733,
+      "recall": 0.9557357196991151,
+      "staticFalsePositiveRate": 0.0010047325721153845,
+      "falseNegativeRate": 0.04426428030088491,
+      "ownershipAccuracy": 0.9400314331054688,
+      "tp": 354361,
+      "fp": 22907,
+      "fn": 16412,
+      "tn": 261680
+    },
+    "cloth": {
+      "iou": 0.8421029871758527,
+      "precision": 0.9446733737410761,
+      "recall": 0.8857895920569497,
+      "staticFalsePositiveRate": 0.001953125,
+      "falseNegativeRate": 0.11421040794305021,
+      "ownershipAccuracy": 0.8940628051757813,
+      "tp": 350522,
+      "fp": 20529,
+      "fn": 45195,
+      "tn": 239114
+    },
+    "occlusion": {
+      "iou": 0.808026981450253,
+      "precision": 0.825903766748125,
+      "recall": 0.9739112367772067,
+      "staticFalsePositiveRate": 0.00104522705078125,
+      "falseNegativeRate": 0.02608876322279334,
+      "ownershipAccuracy": 0.9665603637695312,
+      "tp": 107811,
+      "fp": 22726,
+      "fn": 2888,
+      "tn": 521935
+    },
+    "silhouette": {
+      "iou": 0.7983761348520422,
+      "precision": 0.8412864977480927,
+      "recall": 0.9399496799370144,
+      "staticFalsePositiveRate": 0.0022083629261363635,
+      "falseNegativeRate": 0.060050320062985656,
+      "ownershipAccuracy": 0.9619384765625,
+      "tp": 109835,
+      "fp": 20721,
+      "fn": 7017,
+      "tn": 517787
+    },
+    "static_defocus": {
+      "iou": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "staticFalsePositiveRate": 0.00242462158203125,
+      "falseNegativeRate": 0.0,
+      "ownershipAccuracy": 0.9985687255859375,
+      "tp": 0,
+      "fp": 1589,
+      "fn": 0,
+      "tn": 653771
+    },
+    "bokeh": {
+      "iou": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "staticFalsePositiveRate": 0.00991973876953125,
+      "falseNegativeRate": 0.0,
+      "ownershipAccuracy": 0.99385986328125,
+      "tp": 0,
+      "fp": 6501,
+      "fn": 0,
+      "tn": 648859
+    },
+    "noise": {
+      "iou": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "staticFalsePositiveRate": 0.0006561279296875,
+      "falseNegativeRate": 0.0,
+      "ownershipAccuracy": 0.9998580932617187,
+      "tp": 0,
+      "fp": 430,
+      "fn": 0,
+      "tn": 654930
+    }
+  },
+  "note": "Synthetic held-out evaluation. Real photographs require separately reviewed external labels; no production-quality claim from synthetic metrics alone.",
+  "featureContract": "Golden photographic_score maximum, uint16 quantization, native reflect101 3x3/gradient features",
+  "trainingProvenance": [
+    {
+      "stage": "initial",
+      "baseSteps": 4000,
+      "hardSteps": 2000,
+      "ranking": "gradient proxy",
+      "hardMotionProbability": 0.25
+    },
+    {
+      "stage": "balanced refinement",
+      "baseSteps": 0,
+      "hardSteps": 3000,
+      "ranking": "gradient proxy",
+      "hardMotionProbability": 0.75
+    },
+    {
+      "stage": "native feature correction",
+      "baseSteps": 1500,
+      "hardSteps": 3000,
+      "ranking": "golden photographic maximum",
+      "hardMotionProbability": 0.75
+    }
+  ],
+  "finalCheckpointSHA256": "62e0a710365e872137bf98993e85bd30c08b930e41a4b5dc26444a7e1d882bb7",
+  "coreMLWeightsSHA256": "c49e48292e89160623e07a7fbe6fa2c1de08dd26c70573a2b7906d4a86c87435",
+  "hardNegativeMining": {
+    "examples": 251,
+    "retained": 160,
+    "meanFalsePositiveRate": 0.03319880201416556,
+    "selected": [
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.5265842013888888,
+        "meanMotion": 0.5200625658035278
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.3858506944444444,
+        "meanMotion": 0.37293511629104614
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.3785807291666667,
+        "meanMotion": 0.3953610062599182
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.3522135416666667,
+        "meanMotion": 0.3926842212677002
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.2958984375,
+        "meanMotion": 0.33364027738571167
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.2937282986111111,
+        "meanMotion": 0.3383890986442566
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.2922092013888889,
+        "meanMotion": 0.38210999965667725
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.2915581597222222,
+        "meanMotion": 0.3289557695388794
+      },
+      {
+        "category": "water",
+        "falsePositiveRate": 0.2876519097222222,
+        "meanMotion": 0.31416094303131104
+      },
+      {
+        "category": "leaves",
+        "falsePositiveRate": 0.2647569444444444,
+        "meanMotion": 0.31428617238998413
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.2333984375,
+        "meanMotion": 0.27674680948257446
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.2260199652777778,
+        "meanMotion": 0.2823733389377594
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.2094184027777778,
+        "meanMotion": 0.255502849817276
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.1672092013888889,
+        "meanMotion": 0.1928940862417221
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.1572265625,
+        "meanMotion": 0.2149733603000641
+      },
+      {
+        "category": "water",
+        "falsePositiveRate": 0.15321180555555555,
+        "meanMotion": 0.18003374338150024
+      },
+      {
+        "category": "hair",
+        "falsePositiveRate": 0.1515842013888889,
+        "meanMotion": 0.21274937689304352
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.14756944444444445,
+        "meanMotion": 0.24535594880580902
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.13671875,
+        "meanMotion": 0.18241585791110992
+      },
+      {
+        "category": "water",
+        "falsePositiveRate": 0.1332465277777778,
+        "meanMotion": 0.2346455305814743
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.1318359375,
+        "meanMotion": 0.24970200657844543
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.12662760416666666,
+        "meanMotion": 0.19793052971363068
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.12608506944444445,
+        "meanMotion": 0.1911744773387909
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.11881510416666667,
+        "meanMotion": 0.16650263965129852
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.11805555555555555,
+        "meanMotion": 0.1926199197769165
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.11263020833333333,
+        "meanMotion": 0.27082952857017517
+      },
+      {
+        "category": "occlusion",
+        "falsePositiveRate": 0.1044921875,
+        "meanMotion": 0.1816379874944687
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.10123697916666667,
+        "meanMotion": 0.16937825083732605
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.09168836805555555,
+        "meanMotion": 0.18850165605545044
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.09168836805555555,
+        "meanMotion": 0.1231866180896759
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.08995225694444445,
+        "meanMotion": 0.1324731558561325
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.08930121527777778,
+        "meanMotion": 0.1580626666545868
+      },
+      {
+        "category": "cloud",
+        "falsePositiveRate": 0.08246527777777778,
+        "meanMotion": 0.2255469113588333
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.08040364583333333,
+        "meanMotion": 0.1430787444114685
+      },
+      {
+        "category": "hair",
+        "falsePositiveRate": 0.06781684027777778,
+        "meanMotion": 0.16820016503334045
+      },
+      {
+        "category": "occlusion",
+        "falsePositiveRate": 0.06673177083333333,
+        "meanMotion": 0.10477665066719055
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.06586371527777778,
+        "meanMotion": 0.1316261738538742
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0654296875,
+        "meanMotion": 0.1763068586587906
+      },
+      {
+        "category": "flowers",
+        "falsePositiveRate": 0.060872395833333336,
+        "meanMotion": 0.15386703610420227
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.060872395833333336,
+        "meanMotion": 0.11787833273410797
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.059895833333333336,
+        "meanMotion": 0.12996162474155426
+      },
+      {
+        "category": "occlusion",
+        "falsePositiveRate": 0.05674913194444445,
+        "meanMotion": 0.10585730522871017
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.05479600694444445,
+        "meanMotion": 0.1965821385383606
+      },
+      {
+        "category": "waves",
+        "falsePositiveRate": 0.054253472222222224,
+        "meanMotion": 0.24229367077350616
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.05360243055555555,
+        "meanMotion": 0.07718607783317566
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.053059895833333336,
+        "meanMotion": 0.13349972665309906
+      },
+      {
+        "category": "hair",
+        "falsePositiveRate": 0.04969618055555555,
+        "meanMotion": 0.07060237973928452
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.048394097222222224,
+        "meanMotion": 0.10643532872200012
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.04763454861111111,
+        "meanMotion": 0.15956033766269684
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.041666666666666664,
+        "meanMotion": 0.08924873173236847
+      },
+      {
+        "category": "flowers",
+        "falsePositiveRate": 0.036566840277777776,
+        "meanMotion": 0.07919188588857651
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.035481770833333336,
+        "meanMotion": 0.1552658975124359
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.03244357638888889,
+        "meanMotion": 0.17687276005744934
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.031575520833333336,
+        "meanMotion": 0.11383982747793198
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.029839409722222224,
+        "meanMotion": 0.07856844365596771
+      },
+      {
+        "category": "flowers",
+        "falsePositiveRate": 0.026584201388888888,
+        "meanMotion": 0.06876395642757416
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.0263671875,
+        "meanMotion": 0.13991715013980865
+      },
+      {
+        "category": "cloud",
+        "falsePositiveRate": 0.026150173611111112,
+        "meanMotion": 0.11308857798576355
+      },
+      {
+        "category": "cloth",
+        "falsePositiveRate": 0.025824652777777776,
+        "meanMotion": 0.17958492040634155
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.025824652777777776,
+        "meanMotion": 0.07454037666320801
+      },
+      {
+        "category": "cloth",
+        "falsePositiveRate": 0.024631076388888888,
+        "meanMotion": 0.1193101704120636
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.023546006944444444,
+        "meanMotion": 0.08251531422138214
+      },
+      {
+        "category": "waves",
+        "falsePositiveRate": 0.023003472222222224,
+        "meanMotion": 0.07658432424068451
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.022894965277777776,
+        "meanMotion": 0.1406344324350357
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.022352430555555556,
+        "meanMotion": 0.09524741768836975
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.021592881944444444,
+        "meanMotion": 0.16365471482276917
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.020941840277777776,
+        "meanMotion": 0.11881726235151291
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.020724826388888888,
+        "meanMotion": 0.12246939539909363
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.018229166666666668,
+        "meanMotion": 0.12099014222621918
+      },
+      {
+        "category": "flowers",
+        "falsePositiveRate": 0.017686631944444444,
+        "meanMotion": 0.08648405224084854
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.017252604166666668,
+        "meanMotion": 0.0937243402004242
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.016927083333333332,
+        "meanMotion": 0.10751357674598694
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.016384548611111112,
+        "meanMotion": 0.14241021871566772
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.015299479166666666,
+        "meanMotion": 0.036962661892175674
+      },
+      {
+        "category": "waves",
+        "falsePositiveRate": 0.015190972222222222,
+        "meanMotion": 0.05090285837650299
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.013454861111111112,
+        "meanMotion": 0.15569056570529938
+      },
+      {
+        "category": "occlusion",
+        "falsePositiveRate": 0.013346354166666666,
+        "meanMotion": 0.03691380098462105
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.013129340277777778,
+        "meanMotion": 0.07073311507701874
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.012478298611111112,
+        "meanMotion": 0.09799011051654816
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.011176215277777778,
+        "meanMotion": 0.04139678180217743
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.010850694444444444,
+        "meanMotion": 0.07753107696771622
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.0107421875,
+        "meanMotion": 0.07937688380479813
+      },
+      {
+        "category": "occlusion",
+        "falsePositiveRate": 0.010308159722222222,
+        "meanMotion": 0.02989153377711773
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.009114583333333334,
+        "meanMotion": 0.05000610277056694
+      },
+      {
+        "category": "cloth",
+        "falsePositiveRate": 0.0087890625,
+        "meanMotion": 0.14901462197303772
+      },
+      {
+        "category": "cloud",
+        "falsePositiveRate": 0.008572048611111112,
+        "meanMotion": 0.0960993692278862
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.008463541666666666,
+        "meanMotion": 0.07234843075275421
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.007921006944444444,
+        "meanMotion": 0.11920605599880219
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.007921006944444444,
+        "meanMotion": 0.03654934838414192
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.007595486111111111,
+        "meanMotion": 0.10093175619840622
+      },
+      {
+        "category": "water",
+        "falsePositiveRate": 0.007486979166666667,
+        "meanMotion": 0.05046742409467697
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.007378472222222222,
+        "meanMotion": 0.04547832906246185
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.007052951388888889,
+        "meanMotion": 0.07972463965415955
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.006510416666666667,
+        "meanMotion": 0.04486146569252014
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.006076388888888889,
+        "meanMotion": 0.08476383984088898
+      },
+      {
+        "category": "hair",
+        "falsePositiveRate": 0.005967881944444444,
+        "meanMotion": 0.06517940014600754
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.005859375,
+        "meanMotion": 0.08591091632843018
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.005099826388888889,
+        "meanMotion": 0.04097679629921913
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.004557291666666667,
+        "meanMotion": 0.04443259909749031
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.004340277777777778,
+        "meanMotion": 0.03514373302459717
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0037977430555555555,
+        "meanMotion": 0.10140521079301834
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.0037977430555555555,
+        "meanMotion": 0.09413791447877884
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0037977430555555555,
+        "meanMotion": 0.03506437689065933
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.003689236111111111,
+        "meanMotion": 0.06480911374092102
+      },
+      {
+        "category": "occlusion",
+        "falsePositiveRate": 0.003472222222222222,
+        "meanMotion": 0.048067957162857056
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.003146701388888889,
+        "meanMotion": 0.026090187951922417
+      },
+      {
+        "category": "leaves",
+        "falsePositiveRate": 0.0029296875,
+        "meanMotion": 0.06525266915559769
+      },
+      {
+        "category": "occlusion",
+        "falsePositiveRate": 0.0029296875,
+        "meanMotion": 0.03946191817522049
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0028211805555555555,
+        "meanMotion": 0.10672580450773239
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.002712673611111111,
+        "meanMotion": 0.14148490130901337
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.0026041666666666665,
+        "meanMotion": 0.05978141725063324
+      },
+      {
+        "category": "water",
+        "falsePositiveRate": 0.002495659722222222,
+        "meanMotion": 0.1240726038813591
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.002495659722222222,
+        "meanMotion": 0.03902066871523857
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.002387152777777778,
+        "meanMotion": 0.07781240344047546
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0022786458333333335,
+        "meanMotion": 0.11417847126722336
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.002170138888888889,
+        "meanMotion": 0.12812402844429016
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.002170138888888889,
+        "meanMotion": 0.11363519728183746
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.002170138888888889,
+        "meanMotion": 0.11063550412654877
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.002170138888888889,
+        "meanMotion": 0.07323609292507172
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.001736111111111111,
+        "meanMotion": 0.10684221982955933
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.001736111111111111,
+        "meanMotion": 0.06620839238166809
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.001736111111111111,
+        "meanMotion": 0.024726875126361847
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.0016276041666666667,
+        "meanMotion": 0.10918176174163818
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.0010850694444444445,
+        "meanMotion": 0.08460625261068344
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.0007595486111111111,
+        "meanMotion": 0.023981017991900444
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0006510416666666666,
+        "meanMotion": 0.09655313938856125
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0006510416666666666,
+        "meanMotion": 0.08133495599031448
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.0006510416666666666,
+        "meanMotion": 0.07118488848209381
+      },
+      {
+        "category": "water",
+        "falsePositiveRate": 0.0005425347222222222,
+        "meanMotion": 0.08274123817682266
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0005425347222222222,
+        "meanMotion": 0.07163582742214203
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.0005425347222222222,
+        "meanMotion": 0.027750207111239433
+      },
+      {
+        "category": "hair",
+        "falsePositiveRate": 0.0005425347222222222,
+        "meanMotion": 0.02074655145406723
+      },
+      {
+        "category": "branches",
+        "falsePositiveRate": 0.0003255208333333333,
+        "meanMotion": 0.08911238610744476
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0003255208333333333,
+        "meanMotion": 0.05556099861860275
+      },
+      {
+        "category": "water",
+        "falsePositiveRate": 0.00021701388888888888,
+        "meanMotion": 0.036062125116586685
+      },
+      {
+        "category": "grass",
+        "falsePositiveRate": 0.00021701388888888888,
+        "meanMotion": 0.007515300530940294
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.00010850694444444444,
+        "meanMotion": 0.045345112681388855
+      },
+      {
+        "category": "flowers",
+        "falsePositiveRate": 0.00010850694444444444,
+        "meanMotion": 0.04130247235298157
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.10402105748653412
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.09541242569684982
+      },
+      {
+        "category": "silhouette",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.08177784085273743
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.08041166514158249
+      },
+      {
+        "category": "cloth",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.0713147521018982
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.07052531838417053
+      },
+      {
+        "category": "water",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.06979607045650482
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.06570989638566971
+      },
+      {
+        "category": "cloud",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.06558401137590408
+      },
+      {
+        "category": "hair",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.061375994235277176
+      },
+      {
+        "category": "flowers",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.06055307388305664
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.058922331780195236
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.05857785418629646
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.05760996788740158
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.05749804526567459
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.05231877788901329
+      },
+      {
+        "category": "flowers",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.05160754173994064
+      },
+      {
+        "category": "cloth",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.05055797100067139
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.04990743100643158
+      },
+      {
+        "category": "bokeh",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.04796729236841202
+      },
+      {
+        "category": "static_defocus",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.04615887999534607
+      },
+      {
+        "category": "noise",
+        "falsePositiveRate": 0.0,
+        "meanMotion": 0.04421893134713173
+      }
+    ]
+  }
+}

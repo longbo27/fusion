@@ -30,7 +30,7 @@ def read_region(path,core):
     return result
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--report',required=True);parser.add_argument('--output',required=True);parser.add_argument('--stride',type=int,default=17);parser.add_argument('inputs',nargs='+');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--report',required=True);parser.add_argument('--output',required=True);parser.add_argument('--stride',type=int,default=17);parser.add_argument('--samples',help='External native sample-N/off.u16 fixtures');parser.add_argument('inputs',nargs='+');args=parser.parse_args()
     if args.stride<1:parser.error('stride must be positive')
     text=pathlib.Path(args.report).read_text();report=json.loads(text[text.index('{'):])
     transforms=[np.eye(2,3)]
@@ -44,6 +44,6 @@ def main():
             if index%args.stride:continue
             started=time.monotonic();gold=fuse_tile(sources,transforms,bounds,config,0)
             y0,y1,x0,x1=core;by0,_,bx0,_=bounds;gold=gold[y0-by0:y1-by0,x0-bx0:x1-bx0]
-            actual=read_region(args.output,core);error=np.abs(actual.astype(np.int32)-gold.astype(np.int32))
+            actual=np.fromfile(pathlib.Path(args.samples)/f'sample-{index}'/'off.u16',np.uint16).reshape(y1-y0,x1-x0,4)[...,:3] if args.samples else read_region(args.output,core);error=np.abs(actual.astype(np.int32)-gold.astype(np.int32))
             print(json.dumps(dict(core=core,max=int(error.max()),mean=float(error.mean()),p99=float(np.percentile(error,99)),greaterThanOne=int(np.count_nonzero(error>1)),seconds=time.monotonic()-started)),flush=True)
 if __name__=='__main__':main()

@@ -11,6 +11,7 @@ import CryptoKit
     static func main() async {
         do {
             let args = CommandLine.arguments
+            if args.count>2,args[1]=="--deghost-quality" {try DeghostBenchmark.run(directory:URL(fileURLWithPath:args[2]),metalPackage:args.count>3 ? URL(fileURLWithPath:args[3]):nil);return}
             if args.contains("--production-timing") {
                 let engine=try ProductionMetalPipeline(detailedTiming:true),d=try TileDescriptor(width:1024,height:1024),tile=try ProductionTile(core:d,imageWidth:1024,imageHeight:1024,quality:.maximum)
                 try engine.begin(region:d,quality:.maximum)
@@ -18,30 +19,32 @@ import CryptoKit
                 for i in 0..<3{try engine.fuse(tile:SyntheticTileProvider.make(d),region:d,sourceWidth:1024,sourceHeight:1024,index:i)};_ = try engine.finish(tile:tile)
                 try printJSON(engine.kernelTiming);try printJSON(engine.timing);try printJSON(MemoryMonitor.snapshot());return
             }
-            if args.count>2,args[1]=="--metal-ml" {
+            if args.count>2,["--metal-ml","--metal-ml-v1"].contains(args[1]) {
                 guard #available(macOS 26,iOS 26,*)else{throw NativeError.unavailable("Metal ML requires OS26")}
                 let dir=URL(fileURLWithPath:args[2]),input=try Data(contentsOf:dir.appendingPathComponent("inference-input.f32")).withUnsafeBytes{Array($0.bindMemory(to:Float.self))},expected=try Data(contentsOf:dir.appendingPathComponent("torch-output.f32")).withUnsafeBytes{Array($0.bindMemory(to:Float.self))}
-                try printJSON(MetalMLPrototype.run(package:dir.appendingPathComponent("FocusMotionNetProto.mtlpackage"),features:input,expected:expected));return
+                try printJSON(MetalMLPrototype.run(package:dir.appendingPathComponent(args[1]=="--metal-ml-v1" ? "FocusMotionNetV1.mtlpackage":"FocusMotionNetProto.mtlpackage"),features:input,expected:expected,inputChannels:args[1]=="--metal-ml-v1" ? 12:5,outputChannels:args[1]=="--metal-ml-v1" ? 7:2));return
             }
-            if args.count>3,["--stack","--stack-identity","--stack-ai"].contains(args[1]) {
+            if args.count>3,["--stack","--stack-identity","--stack-ai","--stack-v22-off","--stack-v22-auto","--stack-v22-high"].contains(args[1]) {
                 let output=URL(fileURLWithPath:args[2]),inputs=args.dropFirst(3).map{URL(fileURLWithPath:$0)}
-                let report=try await NativeStackEngine().run(inputs:inputs,output:output,suppliedTransforms:args[1]=="--stack-identity" ? inputs.map{_ in SimilarityTransform()}:nil,aiMode:args[1]=="--stack-ai" ? .auto:.off) { message,fraction in print(String(format:"%.1f%% %@",fraction*100,message));fflush(stdout) }
+                let report=try await NativeStackEngine().run(inputs:inputs,output:output,suppliedTransforms:args[1]=="--stack-identity" ? inputs.map{_ in SimilarityTransform()}:nil,aiMode:args[1].contains("high") ? .high:(["--stack-ai","--stack-v22-auto"].contains(args[1]) ? .auto:.off),debugDirectory:args[1].contains("v22") ? output.deletingPathExtension().appendingPathExtension("diagnostics"):nil) { message,fraction in print(String(format:"%.1f%% %@",fraction*100,message));fflush(stdout) }
                 try printJSON(report);return
             }
             if args.count>3,args[1]=="--align" {
                 let first=LibTIFFTileProvider(url:URL(fileURLWithPath:args[2])),metadata=try first.metadata(),ref=try ReducedImage.read(first)
                 for path in args.dropFirst(3){let candidate=try ReducedImage.read(LibTIFFTileProvider(url:URL(fileURLWithPath:path)));try printJSON(NativeAlignment.align(reference:ref,candidate:candidate,fullWidth:metadata.width,fullHeight:metadata.height))};try printJSON(MemoryMonitor.snapshot());return
             }
-            if args.count>2,args[1]=="--ml-prototype" {
-                let dir=URL(fileURLWithPath:args[2]),compiled=dir.appendingPathComponent("FocusMotionNetProto.mlmodelc")
+            if args.count>2,["--ml-prototype","--ml-v1"].contains(args[1]) {
+                let dir=URL(fileURLWithPath:args[2]),compiled=dir.appendingPathComponent(args[1]=="--ml-v1" ? "FocusMotionNetV1.mlmodelc":"FocusMotionNetProto.mlmodelc")
                 let input=try Data(contentsOf:dir.appendingPathComponent("inference-input.f32")).withUnsafeBytes{Array($0.bindMemory(to:Float.self))},expected=try Data(contentsOf:dir.appendingPathComponent("torch-output.f32")).withUnsafeBytes{Array($0.bindMemory(to:Float.self))}
-                for units in PrototypeComputeUnits.allCases{let runner=MotionPrototypeRunner();try await runner.load(url:compiled,units:units);let result=try await runner.predict(features:input,iterations:20,torchExpected:expected);try printJSON(result.report)}
+                for units in PrototypeComputeUnits.allCases{let runner=MotionPrototypeRunner(inputChannels:args[1]=="--ml-v1" ? 12:5,outputChannels:args[1]=="--ml-v1" ? 7:2);try await runner.load(url:compiled,units:units);let result=try await runner.predict(features:input,iterations:20,torchExpected:expected);try printJSON(result.report)
+                for operation in try await ComputePlanInspector().inspect(compiledModelURL:compiled,computeUnits:units){print("\(units.rawValue) \(operation.operation): preferred \(operation.preferred), supported \(operation.supported), cost \(operation.estimatedCostWeight.map(String.init(describing:)) ?? "unavailable")")}
+                }
                 for operation in try await ComputePlanInspector().inspect(compiledModelURL:compiled){print("\(operation.operation): preferred \(operation.preferred), supported \(operation.supported), cost \(operation.estimatedCostWeight.map(String.init(describing:)) ?? "unavailable")")};return
             }
-            if args.count>2,args[1]=="--production-parity" {
+            if args.count>2,["--production-parity","--production-parity-stable"].contains(args[1]) {
                 let root=URL(fileURLWithPath:args[2]),manifest=try JSONSerialization.jsonObject(with:Data(contentsOf:root.appendingPathComponent("manifest.json"))) as! [[String:Any]]
                 func load<T>(_ url:URL,_ type:T.Type)throws->[T]{try Data(contentsOf:url).withUnsafeBytes{Array($0.bindMemory(to:T.self))}}
-                let engine=try ProductionMetalPipeline()
+                let engine=try ProductionMetalPipeline(ownershipPolicy:args[1]=="--production-parity" ? .goldenStrict:.stable)
                 for entry in manifest {
                     let name=entry["name"] as! String,w=entry["width"] as! Int,h=entry["height"] as! Int,dir=root.appendingPathComponent(name)
                     let quality=StackQuality(rawValue:entry["quality"] as? String ?? "") ?? .maximum

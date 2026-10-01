@@ -23,7 +23,7 @@ int fs_write_tiff_from_raw(const char *raw, const char *temporary, uint32_t widt
  uint16_t compression, uint32_t tile_edge, uint32_t rows_per_strip, int force_big,
  const void *icc, uint32_t icc_length, double dpi_x, double dpi_y, uint16_t res_unit,
  const char *artist, const char *copyright, const char *description,
- uint64_t memory_budget, char *error, size_t error_size);
+ uint32_t compression_workers, uint64_t memory_budget, char *error, size_t error_size);
 int fs_validate_tiff_against_raw(const char *raw, const char *tiff, uint32_t width, uint32_t height,
  const void *icc, uint32_t icc_length, uint64_t memory_budget, char *error, size_t error_size);
 #endif

@@ -231,3 +231,10 @@ prototype alignment and synthetic-only AI remain limitations. See
 ImageIO remains metadata/small-image reference, never the production large-TIFF
 pixel decoder. Generated TIFFs, fixtures, training checkpoints, reports and build
 products stay outside Git.
+
+
+### Native V2.2
+
+Native V2.2 adds registration ambiguity rejection, a bounded candidate-based FocusMotionNetV1, coherent captured-source motion ownership, diagnostic overlays/maps and bounded parallel TIFF strip compression. Python V1.1 remains the unchanged golden reference. AI never predicts photographic RGB.
+
+[Measured results and remaining quality limits](native/Docs/V2_2_RESULTS.md), [model and external annotations](native/Docs/DEGHOST_MODEL.md), and [registration robustness](native/Docs/REGISTRATION_ROBUSTNESS.md) distinguish executed hardware/workloads from unmet photographic quality goals. AI defaults Off pending review; iOS shares the computational core without a mobile UI.

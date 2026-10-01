@@ -42,3 +42,5 @@ native/Artifacts/
 # This compact Core ML source package uses Apple's required Data directory.
 !native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetProto.mlpackage/Data/
 !native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetProto.mlpackage/Data/**
+!native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetV1.mlpackage/Data/
+!native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetV1.mlpackage/Data/**

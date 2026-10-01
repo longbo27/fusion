@@ -5,6 +5,7 @@ import CTIFFBridge
 public enum TIFFCompression: UInt16, Sendable { case none = 1, lzw = 5, deflate = 8 }
 public enum TIFFWriteLayout: Sendable { case strips(rows: Int), tiles(edge: Int) }
 public struct TIFFWriteReport: Codable, Sendable {
+    public let compressionWorkers:Int
     public let encodeSeconds: Double, validationSeconds: Double, rawScratchBytes: UInt64, outputBytes: UInt64
 }
 // Owned by one stack actor. Staging is disk-backed RGB16, never a resident frame.
@@ -14,16 +15,17 @@ public final class TIFFOutputWriter {
     private let width: Int, height: Int, blockEdge: Int
     private let metadata: TIFFBackendMetadata?
     private let layout: TIFFWriteLayout, compression: TIFFCompression, forceBig: Bool
+    private let requestedWorkers:Int
     private var nextX = 0, nextY = 0, finished = false
     public init(output: URL,width: Int,height: Int,blockEdge: Int,metadata: TIFFBackendMetadata? = nil,
-                layout: TIFFWriteLayout = .strips(rows: 32),compression: TIFFCompression = .deflate,forceBigTIFF: Bool = false) throws {
-        guard width > 0,height > 0,width <= Int(UInt32.max),height <= Int(UInt32.max),blockEdge >= 1,blockEdge <= 2048,
+                layout: TIFFWriteLayout = .strips(rows: 32),compression: TIFFCompression = .deflate,forceBigTIFF: Bool = false,compressionWorkers:Int = 0) throws {
+        guard (0...2).contains(compressionWorkers),width > 0,height > 0,width <= Int(UInt32.max),height <= Int(UInt32.max),blockEdge >= 1,blockEdge <= 2048,
               !FileManager.default.fileExists(atPath: output.path) else { throw NativeError.invalid("Invalid output extent or destination already exists") }
         switch layout {
         case .strips(let rows): guard rows > 0,rows <= 2048 else { throw NativeError.invalid("Invalid output strip height") }
         case .tiles(let edge): guard edge > 0,edge <= 2048,edge%16 == 0 else { throw NativeError.invalid("TIFF tile edge must be a multiple of 16") }
         }
-        self.output=output;self.width=width;self.height=height;self.blockEdge=blockEdge;self.metadata=metadata
+        self.requestedWorkers=compressionWorkers;self.output=output;self.width=width;self.height=height;self.blockEdge=blockEdge;self.metadata=metadata
         self.layout=layout;self.compression=compression;self.forceBig=forceBigTIFF
         raw=output.deletingLastPathComponent().appendingPathComponent(".focusstack-\(UUID().uuidString).raw")
         temporary=output.deletingLastPathComponent().appendingPathComponent(".focusstack-\(UUID().uuidString).tiff.partial")
@@ -57,10 +59,14 @@ public final class TIFFOutputWriter {
         let icc=metadata?.icc ?? Data(), start=Date.timeIntervalSinceReferenceDate
         let rows: UInt32,edge: UInt32
         switch layout { case .strips(let n): rows=UInt32(n);edge=0;case .tiles(let n): rows=0;edge=UInt32(n) }
+        let canParallel=edge==0 && compression == .deflate
+        let segmentBytes=UInt64(width)*UInt64(rows)*6
+        let automatic=ApplePlatformMemoryClass.current == .desktop && UInt64(width)*UInt64(height)>=16_000_000 ? 2:1
+        let workers=canParallel && segmentBytes*24+4*1048576<budget ? (requestedWorkers==0 ? automatic:requestedWorkers):1
         let code=icc.withUnsafeBytes {
             fs_write_tiff_from_raw(raw.path,temporary.path,UInt32(width),UInt32(height),compression.rawValue,edge,rows,forceBig ? 1 : 0,
                 $0.baseAddress,UInt32(icc.count),metadata?.dpiX ?? 0,metadata?.dpiY ?? 0,UInt16(metadata?.resolutionUnit ?? 2),
-                metadata?.artist ?? "",metadata?.copyright ?? "",metadata?.description ?? "",budget,&error,error.count)
+                metadata?.artist ?? "",metadata?.copyright ?? "",metadata?.description ?? "",UInt32(workers),budget,&error,error.count)
         }
         guard code != 0 else { throw NativeError.invalid(error.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }) }
         let encoded=Date.timeIntervalSinceReferenceDate, validation=icc.withUnsafeBytes {
@@ -75,6 +81,6 @@ public final class TIFFOutputWriter {
         let directory=open(output.deletingLastPathComponent().path,O_RDONLY)
         if directory >= 0 { _=fsync(directory);close(directory) } // APFS directory fsync may return EINVAL.
         finished=true;try? file.close();try FileManager.default.removeItem(at: raw)
-        return TIFFWriteReport(encodeSeconds: encoded-start,validationSeconds: validated-encoded,rawScratchBytes: UInt64(width)*UInt64(height)*6,outputBytes: bytes)
+        return TIFFWriteReport(compressionWorkers:workers,encodeSeconds: encoded-start,validationSeconds: validated-encoded,rawScratchBytes: UInt64(width)*UInt64(height)*6,outputBytes: bytes)
     }
 }
