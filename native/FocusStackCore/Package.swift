@@ -6,7 +6,9 @@ let package = Package(
     platforms: [.macOS(.v14), .iOS(.v17)],
     products: [.library(name: "FocusStackCore", targets: ["FocusStackCore"])],
     targets: [
-        .target(name: "FocusStackCore", exclude: ["Models", "Resources"], resources: [.copy("MetalEngine/Kernels")]),
+        .target(name: "CLibTIFF", path: "Vendor/libtiff", exclude: ["LICENSE.md", "PROVENANCE.json"], publicHeadersPath: "include", cSettings: [.headerSearchPath(".")], linkerSettings: [.linkedLibrary("z")]),
+        .target(name: "CTIFFBridge", dependencies: ["CLibTIFF"]),
+        .target(name: "FocusStackCore", dependencies: ["CTIFFBridge"], exclude: ["Resources"], resources: [.copy("MetalEngine/Kernels"), .copy("Models")]),
     ],
     swiftLanguageModes: [.v6]
 )

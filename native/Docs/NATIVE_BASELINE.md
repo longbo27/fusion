@@ -1,3 +1,7 @@
+# Current V2.1 baseline
+
+Full-image native TIFF/focus/depth/fusion and real Core ML/Metal ML measurements are in [V2.1 results](V2_1_RESULTS.md). The following Foundation measurements are historical and use a simpler kernel pipeline; do not compare them directly with full production fusion.
+
 # Native foundation baseline
 
 Measured 2026-10-01 on the physical Apple M1 Max MacBook Pro, 32 GiB unified

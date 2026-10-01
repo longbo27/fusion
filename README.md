@@ -194,35 +194,40 @@ Native Apple Silicon behavior is architecturally supported but needs validation
 on physical macOS hardware. Full-size generated workloads and exact limitations
 are reported individually in the measurement document.
 
-## Native V2 Foundation
+## Native V2.1
 
-The Python 0.2.0 / V1.1 implementation above remains the golden reference at
-`a0680d224c3c91a82bef13f318d77d2b60e7ffc3` (annotated `python-v1.1` tag).
-Native development is isolated on `native-v2`; no Python runtime is used by the app.
+Python 0.2.0 / V1.1 above remains the unchanged golden reference at
+`a0680d224c3c91a82bef13f318d77d2b60e7ffc3` (`python-v1.1`). Native work is
+isolated on `native-v2`; the app never invokes Python.
 
-Open `native/FocusStack.xcodeproj` and use the shared `FocusStack` scheme. The
-Swift 6 SwiftUI app targets Apple Silicon/macOS 14+. Its shared
-`native/FocusStackCore` Swift package also targets iOS 17+/iPadOS, with all UI
-and AppKit file picking isolated in the macOS host. Metal 4 features are runtime
-gated on macOS 26+/iOS 26+. Foundation includes exact RGB16 GPU copy, Float32
-luminance/Sobel/Tenengrad, bounded reusable tile resources, hardware/Core ML
-inspection, original ICC metadata retention, and experimental Vision optical flow.
-It does not yet implement complete focus stacking or ship an AI model.
+Open `native/FocusStack.xcodeproj`, shared `FocusStack` scheme. The Swift 6 SwiftUI
+host targets Apple Silicon macOS 14+. `native/FocusStackCore` is a shared macOS /
+iOS 17+ / iPadOS package without AppKit/UIKit. It now includes source-built
+libtiff bounded ROI/output, native similarity registration, Float32 Metal
+focus/depth/protected multiband fusion, and an optional compact synthetic motion
+mask model. Metal 4 inference is capability-gated at OS 26; ordinary Core ML
+remains the app fallback. AI defaults Off and never synthesizes RGB.
 
 ```sh
-# Per-command override if xcode-select still selects Command Line Tools:
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 xcodebuild -project native/FocusStack.xcodeproj -scheme FocusStack \
   -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/FocusStackNativeDerived test
 xcodebuild -project native/FocusStack.xcodeproj -scheme FocusStack \
   -configuration Release -derivedDataPath /tmp/FocusStackNativeDerived build
 /tmp/FocusStackNativeDerived/Build/Products/Release/FocusStackBenchmarks
-PYTHONPATH="$PWD" .venv/bin/python native/Tools/generate_reference_fixtures.py
+(cd native/FocusStackCore && xcodebuild -scheme FocusStackCore \
+  -destination 'generic/platform=iOS' -sdk iphoneos CODE_SIGNING_ALLOWED=NO build)
 ```
 
-ImageIO cropping is **not** a production bounded TIFF decoder. The app inspects
-large TIFF metadata and rejects large pixel reads. See measured findings and
-future TIFF backend requirements in [native architecture](native/Docs/ARCHITECTURE.md),
-[local hardware](native/Docs/LOCAL_HARDWARE.md), and
-[native baseline](native/Docs/NATIVE_BASELINE.md). Generated images, logs, and build
+A real 3×101.9MP stack and generated 20×100MP native pipeline completed on the
+M1 Max. Python remains the photographic quality reference: rare score ties,
+prototype alignment and synthetic-only AI remain limitations. See
+[measured V2.1 results](native/Docs/V2_1_RESULTS.md),
+[architecture](native/Docs/ARCHITECTURE.md),
+[TIFF backend](native/Docs/TIFF_BACKEND.md),
+[Metal parity](native/Docs/METAL_PARITY.md),
+[ML prototype](native/Docs/ML_PROTOTYPE.md), and
+[local hardware](native/Docs/LOCAL_HARDWARE.md).
+ImageIO remains metadata/small-image reference, never the production large-TIFF
+pixel decoder. Generated TIFFs, fixtures, training checkpoints, reports and build
 products stay outside Git.

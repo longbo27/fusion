@@ -28,3 +28,17 @@ xcuserdata/
 native/BenchmarkResults/
 .build/
 .swiftpm/xcode/
+
+# Native ML compilation/training artifacts (compact source .mlpackage is tracked)
+*.mlmodelc/
+*.mtlpackage/
+*.mlarchive
+*.pt
+*.pth
+*.safetensors
+native/TrainingArtifacts/
+native/Artifacts/
+
+# This compact Core ML source package uses Apple's required Data directory.
+!native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetProto.mlpackage/Data/
+!native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetProto.mlpackage/Data/**

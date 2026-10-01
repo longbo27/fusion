@@ -25,7 +25,7 @@ Measured on the physical development Mac on 2026-10-01 (Europe/Oslo).
 | GPU timestamp frequency diagnostic | 24,000,000 ticks/s (SDK API; measured timings use paired clock calibration) |
 | Core ML devices | Apple Neural Engine (16 cores), GPU: Apple M1 Max, CPU |
 | Metal 4 probe | Family support true, real 16×16 Float32 ML/compute tensor allocated, ML encoder constructed |
-| Model execution | No production model loaded; no ML network dispatched |
+| Model execution | No production model; V2.1 synthetic prototype Core ML and Metal 4 ML dispatch executed |
 | Vision | VNGenerateOpticalFlowRequest exposed and executed on 128² fixture |
 
 The system's active developer directory is `/Library/Developer/CommandLineTools`.
@@ -64,7 +64,8 @@ The installed macOS SDK contains:
 
 The source uses explicit platform availability checks for these APIs. Physical
 M1 Max resource probes establish tensor/encoder availability, while newer GPU
-neural/tensor acceleration and actual model execution remain unmeasured.
+neural/tensor instruction acceleration remains unmeasured. V2.1 executed actual
+Core ML inference and a Metal 4 ML package dispatch; see ML_PROTOTYPE.md.
 
 ## Build and launch evidence
 
@@ -75,3 +76,13 @@ NSWorkspace reported finishedLaunching=true, and the system window list showed
 an on-screen `FocusStack Native` window, 900×692. No screenshot or UI-interaction
 permission was needed. Button automation was not exercised; their shared engine
 paths were executed through tests and the benchmark tool.
+
+## V2.1 execution update
+
+On the same physical M1 Max, the updated app launched and NSWorkspace reported
+finishedLaunching=true; the final Release app also had a visible 900×692
+FocusStack Native window in the public window list. Accessibility-based interaction
+was denied by the existing settings; no privacy settings were changed. V2.1 Debug/tests, Release and
+iOS shared-core compilation succeeded. Actual Core ML device-plan inspection and
+Metal 4 buffer-backed tensor ML dispatch executed; measured scopes are in
+[ML prototype](ML_PROTOTYPE.md) and [V2.1 results](V2_1_RESULTS.md).

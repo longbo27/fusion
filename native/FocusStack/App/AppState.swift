@@ -7,7 +7,12 @@ import UniformTypeIdentifiers
 @MainActor
 @Observable final class AppState {
     var hardware = HardwareReport.collect()
-    var log = "Native foundation ready. No production model loaded."
+    var log = "Native V2.1 ready. Synthetic motion-mask prototype available; AI defaults Off."
+    var stackURLs: [URL] = []
+    var quality = StackQuality.maximum
+    var aiMode = AIDeghostMode.off
+    var stackProgress = 0.0
+    var stackReport: NativeStackReport?
     var metadata: ImageMetadata?
     var benchmark: BenchmarkReport?
     var busy = false
@@ -28,11 +33,35 @@ import UniformTypeIdentifiers
             do {
                 let result = try await Task.detached { try TIFFInspector.inspect(url) }.value
                 metadata = result; append(result.summary)
-                append("Metadata only. Large TIFF tile decode is gated until a bounded backend exists.")
+                let backend = try await Task.detached { try LibTIFFTileProvider(url:url).metadata() }.value
+                append(backend.summary)
             } catch { append(error.localizedDescription) }
             hardware = HardwareReport.collect()
         }
     }
+    func loadStack() {
+        guard !busy else { return }
+        let panel=NSOpenPanel();panel.allowedContentTypes=[.tiff];panel.allowsMultipleSelection=true
+        guard panel.runModal() == .OK else{return};stackURLs=panel.urls.sorted{$0.lastPathComponent<$1.lastPathComponent};append("Loaded \(stackURLs.count) TIFF sources in filename order; first source is registration/reference owner.")
+    }
+    func runStack() {
+        guard !busy,!stackURLs.isEmpty else{return}
+        let panel=NSSavePanel();panel.allowedContentTypes=[.tiff];panel.nameFieldStringValue="FocusStack-Native.tif"
+        guard panel.runModal() == .OK,let output=panel.url else{return}
+        let inputs=stackURLs,quality=quality,ai=aiMode;busy=true;stackProgress=0
+        task=Task{
+            defer{busy=false}
+            do{
+                let report=try await NativeStackEngine().run(inputs:inputs,output:output,quality:quality,aiMode:ai){[weak self] message,fraction in
+                    Task{@MainActor in self?.stackProgress=fraction;self?.append(message)}
+                }
+                stackReport=report;append("Completed \(report.width)×\(report.height) RGB16: \(String(format:"%.2f",report.totalSeconds)) s; full output pixels and exact ICC validated.")
+                if ai != .off {append("AI is a synthetic mask prototype. Photographic RGB comes exclusively from source frames.")}
+            }catch{append(error.localizedDescription)}
+            hardware=HardwareReport.collect()
+        }
+    }
+    func cancel(){task?.cancel()}
     func runGPU(size: Int) {
         guard !busy else { return }; busy = true
         task = Task {

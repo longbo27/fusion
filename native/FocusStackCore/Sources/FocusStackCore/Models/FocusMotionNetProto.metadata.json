@@ -1,0 +1,12 @@
+{
+  "seed": 27,
+  "steps": 1200,
+  "trainingSeconds": 48.816291093826294,
+  "precision": 0.5597545726536832,
+  "recall": 0.8873355857121075,
+  "iou": 0.5226116877469609,
+  "staticMeanMotion": 0.19713591767111044,
+  "motionRegionMean": 0.8267191832196222,
+  "parameters": 3194,
+  "note": "Synthetic-only held-out evaluation; no production quality claim."
+}

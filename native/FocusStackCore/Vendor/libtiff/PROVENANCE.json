@@ -1,0 +1,13 @@
+{
+  "version": "4.7.2",
+  "source": "https://download.osgeo.org/libtiff/tiff-4.7.2.tar.gz",
+  "sha256": "672bd7d10aee4606171afb864f3570b83340f6a33e2c186dc0512f7145ffdf6a",
+  "target": "Apple arm64 POSIX; macOS and iOS",
+  "codecs": [
+    "uncompressed",
+    "LZW",
+    "Deflate (Apple SDK libz)",
+    "PackBits"
+  ],
+  "configuration": "configure --disable-shared --disable-jpeg --disable-old-jpeg --disable-jbig --disable-lzma --disable-zstd --disable-webp --disable-lerc --disable-libdeflate --disable-tools --disable-tests --disable-contrib"
+}
