@@ -7,8 +7,9 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading,spacing: 16) {
             Text("FocusStack Native").font(.largeTitle).fontWeight(.semibold)
-            Text("Native V2.2 · Motion ownership and registration").foregroundStyle(.secondary)
+            Text("V3 · Source-Faithful workspace").foregroundStyle(.secondary)
             TabView {
+                WorkspaceView(state:state).tabItem{Label("Workspace",systemImage:"viewfinder")}
                 ScrollView {
                     VStack(alignment: .leading,spacing: 18) {
                         HardwareView(report: state.hardware)

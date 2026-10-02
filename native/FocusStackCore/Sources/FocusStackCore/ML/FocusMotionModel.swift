@@ -61,7 +61,10 @@ final class FocusMotionModel {
         guard (0..<7*65536).allSatisfy({out[$0].isFinite&&out[$0]>=0&&out[$0]<=1})else{throw NativeError.invalid("Nonfinite motion probabilities")}
     }
 }
-public enum FocusMotionModelResource {public static func compile()throws->URL{try FocusMotionModel.compile()}}
+public enum FocusMotionModelResource {
+    public static func compile()throws->URL{try FocusMotionModel.compile()}
+    public static func sourcePackage()throws->URL{guard let url=Bundle.module.url(forResource:"FocusMotionNetV1",withExtension:"mlpackage",subdirectory:"Models")else{throw NativeError.resource("Model source package missing")};return url}
+}
 
 // Synchronous session, exclusively owned by a processing actor or benchmark.
 // Reuses one loaded model across all bounded patches; no source-indexed tensors.

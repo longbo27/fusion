@@ -56,3 +56,7 @@ Motion components currently retain captured reference ownership. The unchanged s
 Deflate strip encoding can use two bounded workers on larger desktop workloads; mobile defaults to one. Worker buffers are admitted against the current OS/RSS/codec budget; the TIFF handle has one owner and serialized raw-strip publication. Full decoded-pixel and ICC validation precedes exclusive atomic publication. None/LZW/tiled encoding retains the serial path.
 
 See [V2.2 results](V2_2_RESULTS.md), [model](DEGHOST_MODEL.md) and [registration](REGISTRATION_ROBUSTNESS.md). Historical V2.1 benchmarks remain intact. Actual quality target misses and reference-defocus/static-false-positive tradeoffs are recorded; neither synthetic masks nor the existence of ANE proves photographic production quality.
+
+## V3 product foundation
+
+The compatibility engine remains `FocusStackCore`; new shared `FusionCore`, `FusionAI` and `FusionProject` products organize provenance, uncertainty, QA, model governance, source identity, projects, audit and local constraints. Optional evidence capture leaves V2 automatic fusion intact. The macOS host gains a source-faithful workspace and bounded ROI inspector. See [V3 product architecture](V3_PRODUCT_ARCHITECTURE.md); previous benchmark history is retained. Heuristic coverage/QA and unverified photographic AI are not presented as calibrated product guarantees.

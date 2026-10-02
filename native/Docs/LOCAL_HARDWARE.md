@@ -2,6 +2,8 @@
 
 Measured on the physical development Mac on 2026-10-01 (Europe/Oslo).
 
+V3 validation on2026-10-02 used the same M1 Max/32GiB Mac after a restart/update: macOS27.0.1 build26A434; Xcode27.0 build27A266a and SDK27.0 remain. The table below preserves the V2 measurement date. Current V3 builds, workloads and launch observations are recorded in [V3_RESULTS.md](V3_RESULTS.md).
+
 | Item | Detected value |
 | --- | --- |
 | Mac | MacBook Pro, MacBookPro18,2 |

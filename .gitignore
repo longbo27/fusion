@@ -44,3 +44,8 @@ native/Artifacts/
 !native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetProto.mlpackage/Data/**
 !native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetV1.mlpackage/Data/
 !native/FocusStackCore/Sources/FocusStackCore/Models/FocusMotionNetV1.mlpackage/Data/**
+
+# Confidential research and generated non-destructive projects stay local.
+/PrivateResearch/
+*.fusionproject/
+*.fusion.json

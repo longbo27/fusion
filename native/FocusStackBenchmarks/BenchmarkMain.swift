@@ -11,6 +11,7 @@ import CryptoKit
     static func main() async {
         do {
             let args = CommandLine.arguments
+            if try await v3(args){return}
             if args.count>2,args[1]=="--deghost-quality" {try DeghostBenchmark.run(directory:URL(fileURLWithPath:args[2]),metalPackage:args.count>3 ? URL(fileURLWithPath:args[3]):nil);return}
             if args.contains("--production-timing") {
                 let engine=try ProductionMetalPipeline(detailedTiming:true),d=try TileDescriptor(width:1024,height:1024),tile=try ProductionTile(core:d,imageWidth:1024,imageHeight:1024,quality:.maximum)

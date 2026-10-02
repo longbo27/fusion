@@ -17,6 +17,8 @@ public final class ProductionMetalPipeline {
     public let context:MetalContext
     private let ownershipPolicy:FocusOwnershipPolicy
     private var sourceCount=0
+    private let productEnabled:Bool
+    private var hasConstraints=false
     private let counters:BatchCounterTiming?
     public var kernelTiming:[String:Double]{counters?.seconds ?? [:]}
     private let pipelines:[String:any MTLComputePipelineState]
@@ -24,17 +26,19 @@ public final class ProductionMetalPipeline {
     private var quality=StackQuality.maximum
     public private(set) var timing=ProductionTiming(),peakMetalBytes:UInt64=0
     private var lastScores:[Float]=[] // Explicit debug export only; empty during production.
-    public init(detailedTiming:Bool=false,ownershipPolicy:FocusOwnershipPolicy = .stable) throws {
+    public init(detailedTiming:Bool=false,ownershipPolicy:FocusOwnershipPolicy = .stable,productEvidence:Bool=false) throws {
+        productEnabled=productEvidence
         self.ownershipPolicy=ownershipPolicy
         context=try MetalContext();counters=detailedTiming ? BatchCounterTiming(device:context.device):nil
         guard let url=Bundle.module.url(forResource:"Production",withExtension:"metal",subdirectory:"Kernels") else { throw NativeError.resource("Missing production shaders") }
         let options=MTLCompileOptions();if #available(macOS 15,iOS 18,*){options.mathMode = .safe;options.mathFloatingPointFunctions = .precise}else{options.fastMathEnabled=false}
         // Separate adds/multiplies track OpenCV's Float32 paths; no fast contraction.
         guard let motionURL=Bundle.module.url(forResource:"Deghost",withExtension:"metal",subdirectory:"Kernels")else{throw NativeError.resource("Missing motion shaders")}
-        let shader=try String(contentsOf:url,encoding:.utf8)+"\n"+String(contentsOf:motionURL,encoding:.utf8)
+        let productURL=Bundle.module.url(forResource:"Product",withExtension:"metal",subdirectory:"Kernels")!
+        let shader=try String(contentsOf:url,encoding:.utf8)+"\n"+String(contentsOf:motionURL,encoding:.utf8)+"\n"+String(contentsOf:productURL,encoding:.utf8)
         let library=try context.device.makeLibrary(source:shader,options:options)
         var states:[String:any MTLComputePipelineState]=[:]
-        for name in ["Warp","Erode","Moments","Mixed","Gaussian","Tensor","Noise","Evidence","Score","Clear","Top","Invalidate","Depth","Cleanup","Mask","Weights","Down","Accumulate","Owned","Normalize","Reconstruct","Final","MotionFeatures","MergeMotion","MotionOwnership","CandidateFeatures","ScatterMotion","RegularizeMotion","MotionDilate","ComponentInit","ComponentUnion","ComponentCompress","CoherentOwnership"] {
+        for name in ["Warp","Erode","Moments","Mixed","Gaussian","Tensor","Noise","Evidence","Score","Clear","Top","Invalidate","Depth","Cleanup","Mask","Weights","Down","Accumulate","Owned","Normalize","Reconstruct","Final","MotionFeatures","MergeMotion","MotionOwnership","CandidateFeatures","ScatterMotion","RegularizeMotion","MotionDilate","ComponentInit","ComponentUnion","ComponentCompress","CoherentOwnership","ProductExclude","ProductCapture","ProductProject","ProductEvidence","ProductPreview","ProductRespectExclusion"] {
             states[name]=try context.device.makeComputePipelineState(function:library.makeFunction(name:"fs"+name)!)
         };pipelines=states
     }
@@ -75,20 +79,23 @@ public final class ProductionMetalPipeline {
         return UInt64(width*height*(16*28+4)+levels*16*4)+32*1048576+5*1048576+64*1048576
     }
     public func begin(region:TileDescriptor,quality:StackQuality)throws {
-        self.quality=quality;sourceCount=0;timing=ProductionTiming();lastScores=[];counters?.reset()
+        self.quality=quality;sourceCount=0;hasConstraints=false;timing=ProductionTiming();lastScores=[];counters?.reset()
         if shape != (region.width,region.height)||pyramidSizes.count != quality.levels+1 {
             buffers.removeAll();shape=(region.width,region.height);pyramidSizes=[]
             var w=shape.0,h=shape.1;for _ in 0...quality.levels{pyramidSizes.append((w,h));w=(w+1)/2;h=(h+1)/2}
             let bytes=Self.plannedBytes(width:shape.0,height:shape.1,quality:quality)
-            guard bytes<MemoryMonitor.budget(recommended:context.capabilities.recommendedWorkingSet) else{throw NativeError.resource("Production tile exceeds RSS/OS/GPU budget")}
+            guard bytes+(productEnabled ? UInt64(shape.0*shape.1*40):0)<MemoryMonitor.budget(recommended:context.capabilities.recommendedWorkingSet) else{throw NativeError.resource("Production tile exceeds RSS/OS/GPU budget")}
             func alloc(_ name:String,_ count:Int)throws{guard let b=context.device.makeBuffer(length:count,options:.storageModeShared)else{throw NativeError.resource("GPU allocation failed")};buffers[name]=b}
             for name in ["source","validTemp","gray","mixed","stats","tensor","tensorStats","noise","filtered","evidence","aggregated","temp","score","top","indices","labels","depth","mask","weights","reference","owned","output","motion","candidateLuma","temporal","uncertainty","motionTemp","staticLabels"] {try alloc(name,shape.0*shape.1*16)}
+            if productEnabled{try alloc("product",shape.0*shape.1*16);try alloc("manual",shape.0*shape.1*8);try alloc("manualRGB",shape.0*shape.1*16);memset(buffer("manual").contents(),0,shape.0*shape.1*8)}
             // Upload capacity is spatially bounded, independent of frame count.
             try alloc("upload",2048*2048*8)
             try alloc("features",12*65536*4);try alloc("probabilities",7*65536*4);try alloc("components",shape.0*shape.1*4)
             for(level,s)in pyramidSizes.enumerated(){for prefix in ["rgb","maskP","acc","recon"]{try alloc(prefix+String(level),s.0*s.1*16)}}
         }
+        if productEnabled{memset(buffer("manual").contents(),0,shape.0*shape.1*8)}
         _=try command{c in
+            if productEnabled{try clear(c,"manualRGB")}
             try clear(c,"top",-1);try clear(c,"indices");try clear(c,"gray");try clear(c,"mask");try clear(c,"noise");try clear(c,"reference");try clear(c,"owned");try clear(c,"motion");try clear(c,"candidateLuma");try clear(c,"temporal");try clear(c,"uncertainty")
             for(i,s)in pyramidSizes.enumerated(){try clear(c,"acc\(i)",0,s.0,s.1)}
         };peakMetalBytes=max(peakMetalBytes,UInt64(context.device.currentAllocatedSize))
@@ -123,6 +130,7 @@ public final class ProductionMetalPipeline {
                 var p=args();p.value=SIMD4(0,1,1,0);try dispatch(c,"Score",[0:"aggregated",1:"noise",2:"score"],p)
             }
             try dispatch(c,"Invalidate",[0:"source",1:"score"],args());var p=args();p.value.x=Float(index)
+            if hasConstraints{try dispatch(c,"ProductExclude",[0:"score",1:"manual"],p)}
             try dispatch(c,"Top",[0:"score",1:"gray",2:"top",3:"indices",4:"mask",6:"candidateLuma",7:"temporal",8:"uncertainty"],p)
         }
         if exportScore{lastScores=floats("score",channel:0)}
@@ -140,7 +148,9 @@ public final class ProductionMetalPipeline {
     public func fuse(tile:RGB16Tile,region:TileDescriptor,transform:SimilarityTransform = .init(),sourceWidth:Int,sourceHeight:Int,index:Int)throws {
         timing.fusion+=try command{c in
             try upload(tile,region:region,transform:transform,sourceWidth:sourceWidth,sourceHeight:sourceHeight,erode:false,c)
-            var p=args();p.value.x=Float(index);try dispatch(c,"Mask",[0:"staticLabels",1:"source",2:"mask"],p)
+            var p=args();p.value.x=Float(index)
+            if hasConstraints{try dispatch(c,"ProductCapture",[0:"source",1:"manual",2:"indices",3:"manualRGB"],p)}
+            try dispatch(c,"Mask",[0:"staticLabels",1:"source",2:"mask"],p)
             try gaussian(c,"mask","filtered",8);p.value.x=quality == .standard ? 4:5
             try dispatch(c,"Weights",[0:"mask",1:"filtered",2:"depth",3:"source",4:"weights"],p)
             try dispatch(c,"Owned",[0:"source",1:"weights",2:"owned"],args())
@@ -157,6 +167,10 @@ public final class ProductionMetalPipeline {
         }
     }
     public func finish(tile:ProductionTile)throws->RGB16Tile {
+        if hasConstraints{
+            let manual=buffer("manual").contents().assumingMemoryBound(to:SIMD2<UInt32>.self),captured=buffer("manualRGB").contents().assumingMemoryBound(to:SIMD4<Float>.self)
+            for k in 0..<shape.0*shape.1 where manual[k].x>0 {guard captured[k].w>0.5 else{throw NativeError.invalid("Manual source has no valid registered pixel; choose another source")}}
+        }
         timing.fusion+=try command{c in
             for(i,s)in pyramidSizes.enumerated(){try dispatch(c,"Normalize",[0:"acc\(i)"],args(s.0,s.1))}
             guard let e=c.makeBlitCommandEncoder()else{throw NativeError.resource("Blit unavailable")};let last=quality.levels,s=pyramidSizes[last]
@@ -166,6 +180,7 @@ public final class ProductionMetalPipeline {
             }}
             var p=args();p.value.x=quality == .standard ? 0:1
             try dispatch(c,"Final",[0:"recon0",1:"owned",2:"depth",3:"reference",4:"output",6:"motion"],p)
+            if hasConstraints{try dispatch(c,"ProductProject",[0:"output",1:"manual",2:"manualRGB"],p)}
         }
         let start=CACurrentMediaTime(),d=tile.core,r=tile.region,ptr=buffer("output").contents().assumingMemoryBound(to:UInt16.self)
         var rgba=[UInt16](repeating:0,count:d.pixelCount*4)
@@ -189,6 +204,7 @@ public final class ProductionMetalPipeline {
         var p=args();p.value.x=mode.threshold
         try dispatch(c,"RegularizeMotion",[0:"motion",1:"motionTemp"],p)
         try dispatch(c,"MotionDilate",[0:"motionTemp",1:"motion"],p)
+        if hasConstraints{try dispatch(c,"ProductRespectExclusion",[0:"motion",1:"manual"],p)}
         try dispatch(c,"ComponentInit",[0:"motion",1:"components"],p)
         try dispatch(c,"ComponentUnion",[0:"components"],p)
         for _ in 0..<6{try dispatch(c,"ComponentCompress",[0:"components"],p)}
@@ -211,6 +227,35 @@ public final class ProductionMetalPipeline {
         var probability=[Float](),mask=[UInt8](),confidence=[Float](),owners=[UInt32](),groups=[UInt32]()
         for y in 0..<d.height{for x in 0..<d.width{let k=(d.y-r.y+y)*r.width+d.x-r.x+x;probability.append(m[k].x);mask.append(m[k].w>0.5 ? 1:0);confidence.append(depth[k].x);owners.append(labels[k].w);groups.append(m[k].w>0.5 ? components[k]:UInt32.max)}}
         return MotionDiagnosticTile(descriptor:d,probability:probability,mask:mask,confidence:confidence,owners:owners,components:groups)
+    }
+    public func installConstraints(_ constraints:[OwnershipConstraint],region:TileDescriptor,sourceCount:Int)throws {
+        guard productEnabled,sourceCount>0,sourceCount<=65535 else{throw NativeError.invalid("Constraint capacity unavailable")}
+        let ptr=buffer("manual").contents().assumingMemoryBound(to:SIMD2<UInt32>.self)
+        for edit in constraints {
+            guard edit.region.valid,edit.action.sourceIndex>=0,edit.action.sourceIndex<sourceCount else{throw NativeError.invalid("Invalid ownership constraint")}
+            let x0=max(region.x,edit.region.x),y0=max(region.y,edit.region.y),x1=min(region.x+region.width,edit.region.x+edit.region.width),y1=min(region.y+region.height,edit.region.y+edit.region.height)
+            if x1<=x0||y1<=y0{continue}
+            for y in y0..<y1{for x in x0..<x1{ptr[(y-region.y)*region.width+x-region.x]=SIMD2(edit.action.code,UInt32(edit.action.sourceIndex))}}
+        }
+        hasConstraints=constraints.contains{$0.region.intersects(PixelRegion(x:region.x,y:region.y,width:region.width,height:region.height))}
+    }
+    public func productEvidence(tile:ProductionTile,registrationConfidence:Double?,aiEnabled:Bool)throws->ProductEvidenceTile {
+        guard productEnabled else{throw NativeError.invalid("Product evidence disabled")}
+        _=try command{c in
+            var p=args();p.value=SIMD4(quality == .standard ? 0:1,Float(registrationConfidence ?? -1),aiEnabled ? 1:0,0)
+            try dispatch(c,"ProductEvidence",[0:"indices",1:"staticLabels",2:"depth",3:"motion",4:"top",6:"recon0",7:"temporal",8:"output",9:"manual",10:"manualRGB",11:"product"],p)
+        }
+        let ptr=buffer("product").contents().assumingMemoryBound(to:SIMD4<UInt32>.self),d=tile.core,r=tile.region
+        var words=[SIMD4<UInt32>](repeating:.zero,count:d.pixelCount)
+        for y in 0..<d.height{for x in 0..<d.width{words[y*d.width+x]=ptr[(y+d.y-r.y)*r.width+x+d.x-r.x]}}
+        peakMetalBytes=max(peakMetalBytes,UInt64(context.device.currentAllocatedSize))
+        return try ProductEvidenceTile(descriptor:d,words:words)
+    }
+    public func alignedPreview(tile:RGB16Tile,region:TileDescriptor,transform:SimilarityTransform,sourceWidth:Int,sourceHeight:Int)throws->RGB16Tile {
+        try begin(region:region,quality:.standard)
+        _=try command{c in try upload(tile,region:region,transform:transform,sourceWidth:sourceWidth,sourceHeight:sourceHeight,erode:false,c);try dispatch(c,"ProductPreview",[0:"source",1:"output"],args())}
+        let ptr=buffer("output").contents().assumingMemoryBound(to:UInt16.self)
+        return try RGB16Tile(descriptor:region,rgba:Array(UnsafeBufferPointer(start:ptr,count:region.pixelCount*4)))
     }
     private func floats(_ name:String,channel:Int)->[Float]{let ptr=buffer(name).contents().assumingMemoryBound(to:SIMD4<Float>.self);return(0..<shape.0*shape.1).map{ptr[$0][channel]}}
     public func diagnostics()->ProductionDiagnostics{

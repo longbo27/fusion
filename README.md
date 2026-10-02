@@ -238,3 +238,7 @@ products stay outside Git.
 Native V2.2 adds registration ambiguity rejection, a bounded candidate-based FocusMotionNetV1, coherent captured-source motion ownership, diagnostic overlays/maps and bounded parallel TIFF strip compression. Python V1.1 remains the unchanged golden reference. AI never predicts photographic RGB.
 
 [Measured results and remaining quality limits](native/Docs/V2_2_RESULTS.md), [model and external annotations](native/Docs/DEGHOST_MODEL.md), and [registration robustness](native/Docs/REGISTRATION_ROBUSTNESS.md) distinguish executed hardware/workloads from unmet photographic quality goals. AI defaults Off pending review; iOS shares the computational core without a mobile UI.
+
+### Native V3 product foundation
+
+`native-v3` adds shared FusionCore/FusionAI/FusionProject boundaries, explicit Source-Faithful state, compressed tiled provenance, uncertainty/coverage review maps, initial Artifact Sentinel proposals, non-destructive ownership constraints, `.fusionproject` persistence and technical audit export. Python and tagged Native V2.2 baselines are preserved. Photographic deghost limits remain; coverage/QA are uncalibrated review aids. See [architecture](native/Docs/V3_PRODUCT_ARCHITECTURE.md), [measured results](native/Docs/V3_RESULTS.md), [dependency inventory](DEPENDENCIES.md) and [public IP process](native/Docs/IP_ENGINEERING_HYGIENE.md).
